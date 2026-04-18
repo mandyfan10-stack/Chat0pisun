@@ -9,7 +9,8 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:mobile": "npm run start --workspace=apps/mobile",
-    "dev": "npx concurrently \"npm run dev:api\" \"npm run dev:mobile\""
+    "dev": "npx concurrently \"npm run dev:api\" \"npm run dev:mobile\"",
+    "quickstart": "npm install && cd apps/api && npx prisma db push && cd ../.. && npx concurrently \"npm run dev:api\" \"npm run web --workspace=apps/mobile\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

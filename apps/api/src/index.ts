@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { prisma } from './config/db';
 
 dotenv.config();
 
@@ -18,8 +19,7 @@ const io = new Server(httpServer, {
 const port = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-// Very basic in-memory DB for MVP demonstration of the flow without Prisma setup blocks
-const users: any[] = [];
+// Very basic in-memory chats for MVP demonstration
 const chats: any[] = [];
 
 app.use(helmet());
@@ -27,40 +27,54 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/auth/register', async (req, res) => {
-    const { email, password, username, displayName } = req.body;
-    if (users.find(u => u.email === email || u.username === username)) {
-        return res.status(400).json({ error: 'User exists' });
-    }
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user = { id: String(Date.now()), email, username, displayName, passwordHash };
-    users.push(user);
+    try {
+        const { email, password, username, displayName } = req.body;
+        const passwordHash = await bcrypt.hash(password, 10);
+        const user = await prisma.user.create({
+            data: { email, username, displayName, passwordHash }
+        });
 
-    const accessToken = jwt.sign({ id: user.id, username }, JWT_SECRET, { expiresIn: '15m' });
-    res.status(201).json({ accessToken, refreshToken: 'refresh_token', user: { id: user.id, username, displayName, email } });
+        const accessToken = jwt.sign({ id: user.id, username }, JWT_SECRET, { expiresIn: '15m' });
+        res.status(201).json({ accessToken, refreshToken: 'refresh_token', user: { id: user.id, username, displayName, email } });
+    } catch(e) {
+        res.status(400).json({ error: 'Registration failed' });
+    }
 });
 
 app.post('/api/auth/login', async (req, res) => {
-    const { email, password } = req.body;
-    const user = users.find(u => u.email === email);
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-        return res.status(400).json({ error: 'Invalid credentials' });
+    try {
+        const { email, password } = req.body;
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+            return res.status(400).json({ error: 'Invalid credentials' });
+        }
+        const accessToken = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '15m' });
+        res.json({ accessToken, refreshToken: 'refresh_token', user: { id: user.id, username: user.username, displayName: user.displayName, email: user.email } });
+    } catch(e) {
+        res.status(400).json({ error: 'Login failed' });
     }
-    const accessToken = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '15m' });
-    res.json({ accessToken, refreshToken: 'refresh_token', user: { id: user.id, username: user.username, displayName: user.displayName, email: user.email } });
 });
 
-app.get('/api/users/search', (req, res) => {
+app.get('/api/users/search', async (req, res) => {
     const q = req.query.q as string;
-    const results = users.filter(u => u.username.includes(q) || u.displayName.includes(q)).map(u => ({ id: u.id, username: u.username, displayName: u.displayName }));
+    const results = await prisma.user.findMany({
+        where: { OR: [{ username: { contains: q } }, { displayName: { contains: q } }] },
+        select: { id: true, username: true, displayName: true }
+    });
     res.json(results);
 });
 
-app.post('/api/chats', (req, res) => {
+app.post('/api/chats', async (req, res) => {
     const { targetUserId } = req.body;
-    // Mock user from token decode usually here
-    const chat = { id: String(Date.now()), participants: [{userId: req.body.userId || 'current', user: users.find(u => u.id === req.body.userId)}, {userId: targetUserId, user: users.find(u => u.id === targetUserId)}], messages: [] };
+    // Note: Mocking auth for demo
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId }});
+    const chat = { id: String(Date.now()), participants: [{userId: 'current', user: null}, {userId: targetUserId, user: targetUser}], messages: [] };
     chats.push(chat);
     res.status(201).json(chat);
+});
+
+app.get('/api/chats', (req, res) => {
+    res.json(chats);
 });
 
 app.get('/health', async (req, res) => {
