@@ -1,24 +1,17 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { View, Text } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 import { ChatListScreen } from '../features/chat/screens/ChatListScreen';
 import { ChatRoomScreen } from '../features/chat/screens/ChatRoomScreen';
-import { RootStackParamList, BottomTabParamList } from './types';
+import { SearchScreen } from '../features/chat/screens/SearchScreen';
+import { SettingsScreen } from '../features/settings/screens/SettingsScreen';
 import { theme } from '../shared/theme';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<BottomTabParamList>();
-
-// Placeholder for Settings
-const SettingsScreen = () => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>Settings</Text>
-  </View>
-);
+const Stack = createNativeStackNavigator<any>();
+const Tab = createBottomTabNavigator<any>();
 
 const BottomTabs = () => {
   return (
@@ -33,11 +26,16 @@ const BottomTabs = () => {
       <Tab.Screen
         name="Chats"
         component={ChatListScreen}
-        options={{
+        options={({ navigation }: any) => ({
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chat" size={size} color={color} />
           ),
-        }}
+          headerRight: () => (
+             <TouchableOpacity style={{ marginRight: 15 }} onPress={() => navigation.navigate('Search')}>
+                 <MaterialCommunityIcons name="magnify" size={24} color={theme.colors.primary} />
+             </TouchableOpacity>
+          )
+        })}
       />
       <Tab.Screen
         name="Settings"
@@ -54,7 +52,6 @@ const BottomTabs = () => {
 
 export const RootNavigator = () => {
   return (
-    <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: theme.colors.backgroundSecondary },
@@ -68,10 +65,16 @@ export const RootNavigator = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="Search"
+          component={SearchScreen}
+          options={{ title: 'Search Users', headerBackVisible: true }}
+        />
+        <Stack.Screen
           name="ChatRoom"
           component={ChatRoomScreen}
           options={{
             title: 'Chat',
+            headerBackVisible: true,
             headerRight: () => (
               <MaterialCommunityIcons
                 name="dots-vertical"
@@ -82,6 +85,5 @@ export const RootNavigator = () => {
           }}
         />
       </Stack.Navigator>
-    </NavigationContainer>
   );
 };

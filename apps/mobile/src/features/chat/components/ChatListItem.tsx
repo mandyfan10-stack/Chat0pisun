@@ -1,26 +1,28 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { format } from 'date-fns';
-import { Chat } from '../types';
-import { ChatService } from '../services/api';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Avatar } from '../../../shared/components/Avatar';
 import { Typography } from '../../../shared/components/Typography';
 import { theme } from '../../../shared/theme';
 
 interface ChatListItemProps {
-  chat: Chat;
+  chat: any;
   onPress: (chatId: string) => void;
 }
 
 export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => {
-  const currentUserId = ChatService.getCurrentUserId();
-  const otherParticipant = chat.participants.find((p) => p.id !== currentUserId) || chat.participants[0];
+  const currentUser = useAuthStore(state => state.user);
+  const otherParticipant = chat.participants.find((p: any) => p.userId !== currentUser?.id)?.user || chat.participants[0]?.user;
 
-  const formatTime = (timestamp?: number) => {
+  const formatTime = (timestamp?: string) => {
     if (!timestamp) return '';
-    const date = new Date(timestamp);
-    // Simple format, in a real app might want "Yesterday", etc.
-    return format(date, 'HH:mm');
+    try {
+        const date = new Date(timestamp);
+        return format(date, 'HH:mm');
+    } catch {
+        return '';
+    }
   };
 
   return (
@@ -30,14 +32,13 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => 
       activeOpacity={0.7}
     >
       <View style={styles.avatarContainer}>
-        <Avatar name={otherParticipant.name} uri={otherParticipant.avatarUrl} size={56} />
-        {otherParticipant.isOnline && <View style={styles.onlineIndicator} />}
+        <Avatar name={otherParticipant?.displayName || 'User'} uri={otherParticipant?.avatarUrl} size={56} />
       </View>
 
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
           <Typography variant="h3" numberOfLines={1} style={styles.name}>
-            {otherParticipant.name}
+            {otherParticipant?.displayName}
           </Typography>
           <Typography variant="caption" color="textSecondary">
             {formatTime(chat.updatedAt)}
@@ -51,16 +52,8 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => 
             numberOfLines={2}
             style={styles.messageText}
           >
-            {chat.lastMessage?.text || 'No messages yet'}
+            {chat.messages?.[0]?.text || 'No messages yet'}
           </Typography>
-
-          {chat.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Typography variant="caption" color="white" style={styles.unreadText}>
-                {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
-              </Typography>
-            </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -78,17 +71,6 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginRight: theme.spacing.md,
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#34C759', // iOS green
-    borderWidth: 2,
-    borderColor: theme.colors.background,
   },
   contentContainer: {
     flex: 1,
@@ -112,17 +94,5 @@ const styles = StyleSheet.create({
   messageText: {
     flex: 1,
     marginRight: theme.spacing.sm,
-  },
-  unreadBadge: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    minWidth: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadText: {
-    fontWeight: 'bold',
   },
 });

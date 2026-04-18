@@ -5,13 +5,13 @@ import { ChatListItem } from '../components/ChatListItem';
 import { theme } from '../../../shared/theme';
 
 export const ChatListScreen = ({ navigation }: any) => {
-  const { chats, isLoadingChats, fetchChats } = useChatStore();
+  const { chats, fetchChats } = useChatStore();
 
   useEffect(() => {
     fetchChats();
   }, []);
 
-  if (isLoadingChats && chats.length === 0) {
+  if (chats.length === 0) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={theme.colors.primary} />

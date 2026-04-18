@@ -2,17 +2,17 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { Message } from '../types';
-import { ChatService } from '../services/api';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Typography } from '../../../shared/components/Typography';
 import { theme } from '../../../shared/theme';
 
 interface MessageBubbleProps {
-  message: Message;
+  message: any;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message }) => {
-  const isMine = message.senderId === ChatService.getCurrentUserId();
+  const currentUser = useAuthStore(state => state.user);
+  const isMine = message.senderId === currentUser?.id;
 
   const getStatusIcon = () => {
     if (!isMine) return null;
@@ -30,17 +30,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
     }
   };
 
+  const formattedTime = message.createdAt ? format(new Date(message.createdAt), 'HH:mm') : '';
+
   return (
     <View style={[styles.container, isMine ? styles.containerMine : styles.containerOther]}>
       <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
         <Typography style={styles.text}>{message.text}</Typography>
         <View style={styles.footer}>
           <Typography variant="caption" color="textSecondary" style={styles.time}>
-            {format(new Date(message.createdAt), 'HH:mm')}
+            {formattedTime}
           </Typography>
           {getStatusIcon()}
         </View>
-        {/* Tail */}
         <View style={[styles.tail, isMine ? styles.tailMine : styles.tailOther]} />
       </View>
     </View>

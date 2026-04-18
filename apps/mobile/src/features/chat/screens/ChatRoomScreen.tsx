@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../auth/store/useAuthStore';
 import React, { useEffect, useCallback } from 'react';
 import { View, FlatList, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,18 +11,19 @@ export const ChatRoomScreen = ({ route, navigation }: any) => {
   const { chatId } = route.params;
   const insets = useSafeAreaInsets();
 
-  const { messages, chats, fetchMessages, sendMessage, markChatAsRead } = useChatStore();
+  const currentUser = useAuthStore(state => state.user);
+  const { messages, chats, fetchMessages, sendMessage } = useChatStore();
   const chatMessages = messages[chatId] || [];
   const chat = chats.find(c => c.id === chatId);
 
   useEffect(() => {
     fetchMessages(chatId);
-    markChatAsRead(chatId);
+
 
     // Setup dynamic header title based on participant
     if (chat) {
-        const otherParticipant = chat.participants.find(p => p.id !== 'u1') || chat.participants[0];
-        navigation.setOptions({ title: otherParticipant.name });
+        const otherParticipant = chat.participants.find((p: any) => p.userId !== currentUser?.id)?.user || chat.participants[0]?.user;
+        navigation.setOptions({ title: otherParticipant?.displayName || 'User' });
     }
   }, [chatId]);
 

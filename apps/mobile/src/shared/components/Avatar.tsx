@@ -5,12 +5,13 @@ import { Typography } from './Typography';
 
 interface AvatarProps {
   uri?: string;
-  name: string;
+  name?: string;
   size?: number;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48 }) => {
-  const initials = name
+  const safeName = name || 'U';
+  const initials = safeName
     .split(' ')
     .map((n) => n[0])
     .join('')
