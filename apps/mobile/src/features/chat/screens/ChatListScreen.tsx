@@ -5,7 +5,9 @@ import { ChatListItem } from '../components/ChatListItem';
 import { theme } from '../../../shared/theme';
 
 export const ChatListScreen = ({ navigation }: any) => {
-  const { chats, fetchChats } = useChatStore();
+  // ⚡ Bolt Optimization: Use specific selectors instead of destructuring to prevent global re-renders (e.g. when messages arrive)
+  const chats = useChatStore(state => state.chats);
+  const fetchChats = useChatStore(state => state.fetchChats);
 
   useEffect(() => {
     fetchChats();
