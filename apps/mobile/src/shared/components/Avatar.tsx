@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 import { Typography } from './Typography';
@@ -10,13 +10,15 @@ interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48 }) => {
-  const safeName = name || 'U';
-  const initials = safeName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = useMemo(() => {
+    const safeName = name || 'U';
+    return safeName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }, [name]);
 
   if (uri) {
     return (
