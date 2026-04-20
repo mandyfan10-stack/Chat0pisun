@@ -17,7 +17,11 @@ const io = new Server(httpServer, {
 });
 
 const port = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.");
+}
 
 // Very basic in-memory chats for MVP demonstration
 const chats: any[] = [];
