@@ -13,6 +13,19 @@ export const ChatListScreen = ({ navigation }: any) => {
     fetchChats();
   }, []);
 
+  // ⚡ Bolt Optimization: Use useCallback for FlatList handlers to prevent breaking React.memo on items
+  const handlePressChat = React.useCallback((chatId: string) => {
+    navigation.navigate('ChatRoom', { chatId });
+  }, [navigation]);
+
+  // ⚡ Bolt Optimization: Extract renderItem and wrap in useCallback, and fix typing to avoid `any`
+  const renderItem = React.useCallback(({ item }: { item: any }) => (
+    <ChatListItem
+      chat={item}
+      onPress={handlePressChat}
+    />
+  ), [handlePressChat]);
+
   if (chats.length === 0) {
     return (
       <View style={styles.center}>
@@ -26,12 +39,7 @@ export const ChatListScreen = ({ navigation }: any) => {
       <FlatList
         data={chats}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ChatListItem
-            chat={item}
-            onPress={(chatId) => navigation.navigate('ChatRoom', { chatId })}
-          />
-        )}
+        renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />

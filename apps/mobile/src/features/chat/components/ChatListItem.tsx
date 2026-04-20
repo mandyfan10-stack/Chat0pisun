@@ -11,24 +11,34 @@ interface ChatListItemProps {
   onPress: (chatId: string) => void;
 }
 
-export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => {
+// ⚡ Bolt Optimization: Memoize ChatListItem to prevent unnecessary re-renders in FlatList
+export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onPress }) => {
   const currentUser = useAuthStore(state => state.user);
-  const otherParticipant = chat.participants.find((p: any) => p.userId !== currentUser?.id)?.user || chat.participants[0]?.user;
 
-  const formatTime = (timestamp?: string) => {
-    if (!timestamp) return '';
+  // ⚡ Bolt Optimization: Memoize otherParticipant logic to avoid finding the other user on every re-render
+  const otherParticipant = React.useMemo(() => {
+    return chat.participants.find((p: any) => p.userId !== currentUser?.id)?.user || chat.participants[0]?.user;
+  }, [chat.participants, currentUser?.id]);
+
+  // ⚡ Bolt Optimization: Memoize date formatting to avoid creating Date objects and formatting strings unnecessarily
+  const formattedTime = React.useMemo(() => {
+    if (!chat.updatedAt) return '';
     try {
-        const date = new Date(timestamp);
+        const date = new Date(chat.updatedAt);
         return format(date, 'HH:mm');
     } catch {
         return '';
     }
-  };
+  }, [chat.updatedAt]);
+
+  const handlePress = React.useCallback(() => {
+    onPress(chat.id);
+  }, [chat.id, onPress]);
 
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={() => onPress(chat.id)}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       <View style={styles.avatarContainer}>
@@ -41,7 +51,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => 
             {otherParticipant?.displayName}
           </Typography>
           <Typography variant="caption" color="textSecondary">
-            {formatTime(chat.updatedAt)}
+            {formattedTime}
           </Typography>
         </View>
 
@@ -58,7 +68,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => 
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

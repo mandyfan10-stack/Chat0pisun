@@ -9,14 +9,18 @@ interface AvatarProps {
   size?: number;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48 }) => {
-  const safeName = name || 'U';
-  const initials = safeName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+// ⚡ Bolt Optimization: Memoize Avatar to prevent re-rendering when parent components re-render without props changes
+export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 }) => {
+  // ⚡ Bolt Optimization: Memoize initials derivation to avoid recalculating string operations on every re-render
+  const initials = React.useMemo(() => {
+    const safeName = name || 'U';
+    return safeName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }, [name]);
 
   if (uri) {
     return (
@@ -40,7 +44,7 @@ export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48 }) => {
       </Typography>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
