@@ -1,0 +1,3 @@
+## 2024-04-19 - Zustand Store Destructuring Causes Unnecessary Re-renders
+**Learning:** In React Native, using destructuring on a Zustand store (e.g., `const { messages } = useChatStore()`) causes the component to re-render whenever ANY state in the store changes, not just the destructured properties. This is a massive performance bottleneck in chat applications, as receiving a message in one chat room would cause all other active chat components to re-render.
+**Action:** Always use specific state selectors when accessing Zustand stores (e.g., `const messages = useChatStore(state => state.messages[chatId])`). This ensures components only subscribe to the specific data they need.

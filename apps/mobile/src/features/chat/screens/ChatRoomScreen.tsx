@@ -12,9 +12,11 @@ export const ChatRoomScreen = ({ route, navigation }: any) => {
   const insets = useSafeAreaInsets();
 
   const currentUser = useAuthStore(state => state.user);
-  const { messages, chats, fetchMessages, sendMessage } = useChatStore();
-  const chatMessages = messages[chatId] || [];
-  const chat = chats.find(c => c.id === chatId);
+  // ⚡ Bolt Optimization: Use specific selectors to prevent this ChatRoom from re-rendering when messages are received in *other* chat rooms
+  const chatMessages = useChatStore(state => state.messages[chatId]) || [];
+  const chat = useChatStore(state => state.chats.find(c => c.id === chatId));
+  const fetchMessages = useChatStore(state => state.fetchMessages);
+  const sendMessage = useChatStore(state => state.sendMessage);
 
   useEffect(() => {
     fetchMessages(chatId);

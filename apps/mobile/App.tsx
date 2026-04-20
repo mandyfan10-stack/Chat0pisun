@@ -12,7 +12,10 @@ import { ActivityIndicator, View } from 'react-native';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const { token, isLoading, restoreToken } = useAuthStore();
+  // ⚡ Bolt Optimization: Use specific selectors instead of destructuring to prevent unnecessary global re-renders when other auth states change
+  const token = useAuthStore(state => state.token);
+  const isLoading = useAuthStore(state => state.isLoading);
+  const restoreToken = useAuthStore(state => state.restoreToken);
 
   useEffect(() => {
     restoreToken();
