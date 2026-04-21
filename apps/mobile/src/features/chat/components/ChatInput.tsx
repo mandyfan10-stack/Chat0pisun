@@ -20,7 +20,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
 
   return (
     <View style={styles.container}>
-      <IconButton icon="plus" color={theme.colors.primary} />
+      <IconButton
+        icon="plus"
+        color={theme.colors.primary}
+        accessibilityLabel="Add attachment"
+      />
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -39,9 +43,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
           color={theme.colors.primary}
           size={32}
           onPress={handleSend}
+          accessibilityLabel="Send message"
         />
       ) : (
-        <IconButton icon="microphone-outline" color={theme.colors.textSecondary} />
+        <IconButton
+          icon="microphone-outline"
+          color={theme.colors.textSecondary}
+          accessibilityLabel="Record voice message"
+        />
       )}
     </View>
   );
