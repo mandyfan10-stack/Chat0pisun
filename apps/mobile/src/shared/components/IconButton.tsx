@@ -20,6 +20,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
     <TouchableOpacity
       style={[styles.container, style]}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessibilityRole="button"
       {...props}
     >
       <MaterialCommunityIcons name={icon} size={size} color={color} />
