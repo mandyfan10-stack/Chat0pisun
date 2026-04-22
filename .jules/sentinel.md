@@ -6,3 +6,8 @@
 **Vulnerability:** The API used `cors: { origin: '*' }` for Socket.IO and `app.use(cors())` for Express, which allowed cross-origin requests from any domain, making the application susceptible to CSRF attacks and unauthorized data access.
 **Learning:** Hardcoding wildcard CORS origins exposes backend APIs unnecessarily to unauthorized clients, which is an easily exploitable architectural flaw in highly scalable services.
 **Prevention:** Always restrict allowed CORS origins using an environment variable like `ALLOWED_ORIGINS` which strictly validates the domain before accepting the request, or fallback to standard development ports for local testing.
+
+## 2026-04-22 - [Missing Input Length and Result Limits on Search Endpoint]
+**Vulnerability:** The `/api/users/search` endpoint lacked minimum input length validation and did not limit the number of returned results, making it susceptible to bulk user enumeration and potential denial-of-service (DoS) via expensive wildcard database queries.
+**Learning:** Unrestricted search endpoints are a common vector for data scraping and resource exhaustion, especially when utilizing open-ended `contains` ORM operations.
+**Prevention:** Always enforce minimum query lengths (e.g., `q.length >= 3`) and strictly limit the maximum number of returned database rows (e.g., `take: 10`) on publicly accessible search endpoints.
