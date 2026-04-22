@@ -103,7 +103,7 @@ export default function ChatApp() {
             </div>
             <span className="font-semibold text-gray-800">{user?.displayName || user?.username}</span>
           </div>
-          <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition">
+          <button onClick={handleLogout} className="text-gray-500 hover:text-red-500 transition" aria-label="Logout">
             <LogOut size={20} />
           </button>
         </div>
@@ -117,7 +117,7 @@ export default function ChatApp() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button type="submit" className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
+            <button type="submit" className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600" aria-label="Search users">
               <Search size={16} />
             </button>
           </form>
@@ -201,6 +201,7 @@ export default function ChatApp() {
                   type="submit"
                   disabled={!message.trim()}
                   className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  aria-label="Send message"
                 >
                   <Send size={20} />
                 </button>
