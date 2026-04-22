@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Typography } from '../../../shared/components/Typography';
@@ -8,21 +8,33 @@ export const SearchScreen = ({ navigation }: any) => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const token = useAuthStore(state => state.token);
+    const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-    const handleSearch = async (text: string) => {
+    // ⚡ Bolt Optimization: Debounce the search input to reduce API calls while typing
+    const handleSearch = useCallback((text: string) => {
         setQuery(text);
-        if (text.length < 2) return setResults([]);
 
-        try {
-            const res = await fetch(`${API_URL}/api/users/search?q=${text}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            setResults(data);
-        } catch (e) {
-            console.error(e);
+        if (searchTimeout.current) {
+            clearTimeout(searchTimeout.current);
         }
-    };
+
+        if (text.length < 2) {
+            setResults([]);
+            return;
+        }
+
+        searchTimeout.current = setTimeout(async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/users/search?q=${text}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                setResults(data);
+            } catch (e) {
+                console.error(e);
+            }
+        }, 300);
+    }, [token]);
 
     const startChat = async (targetUserId: string) => {
         try {

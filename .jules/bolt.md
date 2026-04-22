@@ -5,3 +5,6 @@
 ## 2024-04-21 - FlatList Re-renders from Inline Functions
 **Learning:** In React Native, passing inline functions (like `onPress={() => navigate(...) }`) or inline `renderItem` props to a `FlatList` causes cascading re-renders. Every time the parent component (e.g., `ChatListScreen`) re-renders, new function instances are created, forcing every single list item to unnecessarily re-render, destroying list scrolling performance.
 **Action:** Always extract `FlatList` handlers (like `onPress` actions) and the `renderItem` function itself into `useCallback` hooks. Additionally, wrap the corresponding list item component (e.g., `ChatListItem`) in `React.memo` to ensure it only updates when its specific props change.
+## 2024-11-20 - Debounce Immediate State Update in React Native Text Inputs
+**Learning:** In React Native text inputs, if you debounce the actual state update (e.g. `setQuery(text)`), the UI will feel sluggish because the input won't update its visual value until the debounce timer completes.
+**Action:** When debouncing searches, always update the local input text state immediately, and only debounce the secondary action (like the API call or complex filtering).
