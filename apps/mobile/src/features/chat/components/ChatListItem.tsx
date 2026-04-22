@@ -11,7 +11,8 @@ interface ChatListItemProps {
   onPress: (chatId: string) => void;
 }
 
-export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => {
+// ⚡ Bolt Optimization: Wrap with React.memo to prevent re-renders when other items in the FlatList update
+export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onPress }) => {
   const currentUser = useAuthStore(state => state.user);
   const otherParticipant = chat.participants.find((p: any) => p.userId !== currentUser?.id)?.user || chat.participants[0]?.user;
 
@@ -58,7 +59,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress }) => 
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
