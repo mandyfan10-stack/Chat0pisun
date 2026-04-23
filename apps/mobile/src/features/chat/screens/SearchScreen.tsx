@@ -65,7 +65,7 @@ export const SearchScreen = ({ navigation }: any) => {
                 data={results}
                 keyExtractor={(item: any) => item.id}
                 renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.item} onPress={() => startChat(item.id)}>
+                    <TouchableOpacity style={styles.item} onPress={() => startChat(item.id)} accessibilityRole="button" accessibilityLabel={`Start chat with ${item.displayName}`}>
                         <Typography>{item.displayName} (@{item.username})</Typography>
                     </TouchableOpacity>
                 )}
