@@ -1,13 +1,4 @@
-## 2025-04-19 - [Fix Hardcoded JWT Secret Fallback]
-**Vulnerability:** The application used a weak, hardcoded string (`'secret'`) as a fallback for the `JWT_SECRET` environment variable.
-**Learning:** Hardcoding a fallback secret makes tokens easily forgeable if the environment variable is accidentally missing, fundamentally undermining the security of JWT-based authentication.
-**Prevention:** Always fail securely by throwing an error or exiting when critical cryptographic material (like a secret key) is missing, rather than attempting to fall back to an insecure default.
-## 2025-04-21 - [Restrict Overly Permissive CORS Configurations]
-**Vulnerability:** The API used `cors: { origin: '*' }` for Socket.IO and `app.use(cors())` for Express, which allowed cross-origin requests from any domain, making the application susceptible to CSRF attacks and unauthorized data access.
-**Learning:** Hardcoding wildcard CORS origins exposes backend APIs unnecessarily to unauthorized clients, which is an easily exploitable architectural flaw in highly scalable services.
-**Prevention:** Always restrict allowed CORS origins using an environment variable like `ALLOWED_ORIGINS` which strictly validates the domain before accepting the request, or fallback to standard development ports for local testing.
-
-## 2026-04-22 - [Missing Input Length and Result Limits on Search Endpoint]
-**Vulnerability:** The `/api/users/search` endpoint lacked minimum input length validation and did not limit the number of returned results, making it susceptible to bulk user enumeration and potential denial-of-service (DoS) via expensive wildcard database queries.
-**Learning:** Unrestricted search endpoints are a common vector for data scraping and resource exhaustion, especially when utilizing open-ended `contains` ORM operations.
-**Prevention:** Always enforce minimum query lengths (e.g., `q.length >= 3`) and strictly limit the maximum number of returned database rows (e.g., `take: 10`) on publicly accessible search endpoints.
+## 2024-04-23 - Express API Type Injection Vulnerabilities
+**Vulnerability:** The API blindly trusted user input in `req.body` and `req.query`, passing them directly to Prisma (`findUnique`, `findMany`) and `bcrypt.hash`/`bcrypt.compare`. An attacker could pass objects instead of strings (e.g., `email: { "contains": "@" }` or `password: ["array"]`), causing backend crashes (500 errors) or potentially bypassing Prisma queries if the types happened to align with Prisma's advanced query syntax.
+**Learning:** Destructuring request payloads does not guarantee string types. Prisma ORM translates object inputs into SQL syntax directives. While Prisma usually defends against SQL Injection (by parameterizing queries), it treats objects passed into simple fields as syntax modifiers if not strictly typed.
+**Prevention:** In Express APIs without strict middleware validation (like Zod or Joi), ALWAYS manually verify that string-based input is actually a string (`typeof x === 'string'`) before processing, especially prior to passing it to ORMs or native crypto libraries.
