@@ -65,9 +65,16 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/users/search', async (req, res) => {
     const q = req.query.q as string;
+
+    // Security Fix: Prevent bulk user enumeration and performance degradation
+    if (!q || q.length < 3) {
+        return res.json([]);
+    }
+
     const results = await prisma.user.findMany({
         where: { OR: [{ username: { contains: q } }, { displayName: { contains: q } }] },
-        select: { id: true, username: true, displayName: true }
+        select: { id: true, username: true, displayName: true },
+        take: 10 // Security Fix: Limit exposure
     });
     res.json(results);
 });
