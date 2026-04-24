@@ -37,6 +37,9 @@ app.use(express.json());
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, username, displayName } = req.body;
+        if (typeof email !== 'string' || typeof password !== 'string' || typeof username !== 'string' || typeof displayName !== 'string') {
+            return res.status(400).json({ error: 'Invalid input types' });
+        }
         const passwordHash = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
             data: { email, username, displayName, passwordHash }
@@ -52,6 +55,9 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ error: 'Invalid input types' });
+        }
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
             return res.status(400).json({ error: 'Invalid credentials' });
@@ -64,7 +70,11 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/users/search', async (req, res) => {
-    const q = req.query.q as string;
+    const q = req.query.q;
+
+    if (typeof q !== 'string') {
+        return res.status(400).json({ error: 'Invalid search query' });
+    }
 
     // Security Fix: Prevent bulk user enumeration and performance degradation
     if (!q || q.length < 3) {
@@ -81,6 +91,9 @@ app.get('/api/users/search', async (req, res) => {
 
 app.post('/api/chats', async (req, res) => {
     const { targetUserId } = req.body;
+    if (typeof targetUserId !== 'string') {
+        return res.status(400).json({ error: 'Invalid input types' });
+    }
     // Note: Mocking auth for demo
     const targetUser = await prisma.user.findUnique({ where: { id: targetUserId }});
     const chat = { id: String(Date.now()), participants: [{userId: 'current', user: null}, {userId: targetUserId, user: targetUser}], messages: [] };
