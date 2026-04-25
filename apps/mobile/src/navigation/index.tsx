@@ -31,7 +31,7 @@ const BottomTabs = () => {
             <MaterialCommunityIcons name="chat" size={size} color={color} />
           ),
           headerRight: () => (
-             <TouchableOpacity style={{ marginRight: 15 }} onPress={() => navigation.navigate('Search')}>
+             <TouchableOpacity style={{ marginRight: 15 }} onPress={() => navigation.navigate('Search')} accessibilityRole="button" accessibilityLabel="Search">
                  <MaterialCommunityIcons name="magnify" size={24} color={theme.colors.primary} />
              </TouchableOpacity>
           )
@@ -76,11 +76,13 @@ export const RootNavigator = () => {
             title: 'Chat',
             headerBackVisible: true,
             headerRight: () => (
-              <MaterialCommunityIcons
-                name="dots-vertical"
-                size={24}
-                color={theme.colors.primary}
-              />
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Chat options">
+                <MaterialCommunityIcons
+                  name="dots-vertical"
+                  size={24}
+                  color={theme.colors.primary}
+                />
+              </TouchableOpacity>
             ),
           }}
         />
