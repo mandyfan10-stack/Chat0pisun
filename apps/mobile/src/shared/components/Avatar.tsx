@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 import { Typography } from './Typography';
@@ -9,14 +9,19 @@ interface AvatarProps {
   size?: number;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48 }) => {
+// ⚡ Bolt Optimization: Wrap with React.memo to prevent unnecessary re-renders in FlatLists
+export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 }) => {
   const safeName = name || 'U';
-  const initials = safeName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+
+  // ⚡ Bolt Optimization: Memoize initials generation to prevent recalculating on every re-render
+  const initials = useMemo(() => {
+    return safeName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }, [safeName]);
 
   if (uri) {
     return (
@@ -40,7 +45,7 @@ export const Avatar: React.FC<AvatarProps> = ({ uri, name, size = 48 }) => {
       </Typography>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
