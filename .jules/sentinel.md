@@ -11,3 +11,8 @@
 **Vulnerability:** The `/api/users/search` endpoint lacked minimum input length validation and did not limit the number of returned results, making it susceptible to bulk user enumeration and potential denial-of-service (DoS) via expensive wildcard database queries.
 **Learning:** Unrestricted search endpoints are a common vector for data scraping and resource exhaustion, especially when utilizing open-ended `contains` ORM operations.
 **Prevention:** Always enforce minimum query lengths (e.g., `q.length >= 3`) and strictly limit the maximum number of returned database rows (e.g., `take: 10`) on publicly accessible search endpoints.
+
+## 2026-04-24 - [Unvalidated Request Payload Types Leading to Injection and Crashes]
+**Vulnerability:** The API implicitly assumed properties like `req.body.email` and `req.query.q` were strings without explicit validation. Attackers could send JSON arrays or objects (e.g. `{"email": {"$gte": ""}}`) bypassing initial checks and causing methods like `bcrypt.hash`, `bcrypt.compare`, or ORM queries to crash the server (500 Internal Server Error) or behave unexpectedly.
+**Learning:** Destructuring request payloads does not enforce primitive typing. Assuming inputs are strings leaves the system vulnerable to Type Injection and resource exhaustion attacks (DoS).
+**Prevention:** Always strictly validate the type of incoming request properties (e.g., `typeof email === 'string'`) before passing them to internal functions or ORM operations.
