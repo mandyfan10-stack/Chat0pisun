@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Keyboard } from 'react-native';
+import { View, TextInput, StyleSheet } from 'react-native';
 import { theme } from '../../../shared/theme';
 import { IconButton } from '../../../shared/components/IconButton';
 
@@ -34,6 +34,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
           onChangeText={setText}
           multiline
           maxLength={1000}
+          accessibilityLabel="Message"
         />
       </View>
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
 import { useAuthStore } from '../store/useStore';
 
 export default function Register() {
@@ -8,19 +7,19 @@ export default function Register() {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { setUser } = useAuthStore();
+  const register = useAuthStore((state) => state.register);
+  const error = useAuthStore((state) => state.authError);
+  const isSubmitting = useAuthStore((state) => state.isSubmitting);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
-      const res = await api.post('/auth/register', { email, username, displayName, password });
-      setUser(res.data.user, res.data.accessToken);
-      localStorage.setItem('token', res.data.accessToken);
+      await register({ email, username, displayName, password });
       navigate('/');
-    } catch (err) {
-      setError('Registration failed');
+    } catch {
+      // Store state renders the backend error.
     }
   };
 
@@ -69,8 +68,12 @@ export default function Register() {
               required
             />
           </div>
-          <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">
-            Register
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Creating account...' : 'Register'}
           </button>
         </form>
         <div className="mt-4 text-center">

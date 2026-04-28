@@ -1,7 +1,17 @@
 import { Platform } from 'react-native';
 
-const DEV_IP = '192.168.1.100';
+declare const process: {
+  env?: {
+    EXPO_PUBLIC_API_URL?: string;
+  };
+};
 
-export const API_URL = __DEV__
-    ? (Platform.OS === 'web' || Platform.OS === 'ios' ? 'http://localhost:4000' : `http://10.0.2.2:4000`)
-    : 'https://api.yourdomain.com';
+const configuredApiUrl = process.env?.EXPO_PUBLIC_API_URL;
+
+export const API_URL =
+  configuredApiUrl ||
+  (__DEV__
+    ? Platform.OS === 'android'
+      ? 'http://10.0.2.2:4000'
+      : 'http://localhost:4000'
+    : 'https://api.yourdomain.com');

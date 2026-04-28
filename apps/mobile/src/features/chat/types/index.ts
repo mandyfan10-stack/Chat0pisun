@@ -2,9 +2,13 @@ export type MessageStatus = 'sending' | 'sent' | 'read' | 'error';
 
 export interface User {
   id: string;
-  name: string;
-  avatarUrl?: string;
-  isOnline?: boolean;
+  email: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  lastSeen: string;
+  createdAt: string;
 }
 
 export interface Message {
@@ -12,14 +16,24 @@ export interface Message {
   chatId: string;
   senderId: string;
   text: string;
-  createdAt: number;
-  status: MessageStatus;
+  createdAt: string;
+  updatedAt: string | null;
+  readAt: string | null;
+  status?: MessageStatus;
+}
+
+export interface Participant {
+  id: string;
+  chatId: string;
+  userId: string;
+  createdAt: string;
+  user: User;
 }
 
 export interface Chat {
   id: string;
-  participants: User[];
-  lastMessage?: Message;
-  unreadCount: number;
-  updatedAt: number;
+  createdAt: string;
+  updatedAt: string;
+  participants: Participant[];
+  lastMessage: Message | null;
 }

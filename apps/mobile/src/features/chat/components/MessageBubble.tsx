@@ -5,9 +5,10 @@ import { format } from 'date-fns';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Typography } from '../../../shared/components/Typography';
 import { theme } from '../../../shared/theme';
+import type { Message } from '../types';
 
 interface MessageBubbleProps {
-  message: any;
+  message: Message;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message }) => {
@@ -16,17 +17,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
 
   const getStatusIcon = () => {
     if (!isMine) return null;
+
     switch (message.status) {
       case 'sending':
         return <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.textSecondary} />;
-      case 'sent':
-        return <MaterialCommunityIcons name="check" size={14} color={theme.colors.textSecondary} />;
       case 'read':
         return <MaterialCommunityIcons name="check-all" size={14} color={theme.colors.primary} />;
       case 'error':
         return <MaterialCommunityIcons name="alert-circle-outline" size={14} color={theme.colors.error} />;
+      case 'sent':
       default:
-        return null;
+        return <MaterialCommunityIcons name="check" size={14} color={theme.colors.textSecondary} />;
     }
   };
 

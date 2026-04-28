@@ -1,29 +1,22 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { View, TextInput, Button, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { Typography } from '../../../shared/components/Typography';
-import { API_URL } from '../../../config/env';
+import type { LoginScreenProps } from '../../../navigation/types';
+import { theme } from '../../../shared/theme';
 
-export const LoginScreen = ({ navigation }: any) => {
+export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const signIn = useAuthStore((state) => state.signIn);
+  const login = useAuthStore((state) => state.login);
+  const isSubmitting = useAuthStore((state) => state.isSubmitting);
+  const error = useAuthStore((state) => state.error);
 
   const handleLogin = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        signIn(data.user, data.accessToken, data.refreshToken);
-      } else {
-        alert(data.error);
-      }
-    } catch (error) {
-      alert('Login failed');
+      await login(email, password);
+    } catch {
+      // Store state renders the backend error.
     }
   };
 
@@ -36,6 +29,8 @@ export const LoginScreen = ({ navigation }: any) => {
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
+        keyboardType="email-address"
+        accessibilityLabel="Email"
       />
       <TextInput
         style={styles.input}
@@ -43,14 +38,29 @@ export const LoginScreen = ({ navigation }: any) => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        accessibilityLabel="Password"
       />
-      <Button title="Login" onPress={handleLogin} />
-      <Button title="Register instead" onPress={() => navigation.navigate('Register')} />
+      {error ? (
+        <Typography color="error" style={styles.error}>
+          {error}
+        </Typography>
+      ) : null}
+      {isSubmitting ? (
+        <ActivityIndicator color={theme.colors.primary} />
+      ) : (
+        <Button title="Login" onPress={handleLogin} accessibilityLabel="Login" />
+      )}
+      <Button
+        title="Register instead"
+        onPress={() => navigation.navigate('Register')}
+        accessibilityLabel="Register instead"
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 20 },
-  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginVertical: 10, borderRadius: 8 }
+  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginVertical: 10, borderRadius: 8 },
+  error: { marginBottom: 10 },
 });
