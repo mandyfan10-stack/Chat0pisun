@@ -1,50 +1,83 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { View, TextInput, Button, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { Typography } from '../../../shared/components/Typography';
-import { API_URL } from '../../../config/env';
+import type { RegisterScreenProps } from '../../../navigation/types';
+import { theme } from '../../../shared/theme';
 
-export const RegisterScreen = ({ navigation }: any) => {
+export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
-
-  const signIn = useAuthStore((state) => state.signIn);
+  const register = useAuthStore((state) => state.register);
+  const isSubmitting = useAuthStore((state) => state.isSubmitting);
+  const error = useAuthStore((state) => state.error);
 
   const handleRegister = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, username, displayName }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        signIn(data.user, data.accessToken, data.refreshToken);
-      } else {
-        alert(data.error);
-      }
-    } catch (error) {
-      alert('Registration failed');
+      await register({ email, password, username, displayName });
+    } catch {
+      // Store state renders the backend error.
     }
   };
 
   return (
     <View style={styles.container}>
       <Typography variant="h1">Register</Typography>
-      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
-      <TextInput style={styles.input} placeholder="Display Name" value={displayName} onChangeText={setDisplayName} />
-      <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-
-      <Button title="Register" onPress={handleRegister} />
-      <Button title="Back to Login" onPress={() => navigation.navigate('Login')} />
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        accessibilityLabel="Email"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Username"
+        value={username}
+        onChangeText={setUsername}
+        autoCapitalize="none"
+        accessibilityLabel="Username"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Display Name"
+        value={displayName}
+        onChangeText={setDisplayName}
+        accessibilityLabel="Display name"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        accessibilityLabel="Password"
+      />
+      {error ? (
+        <Typography color="error" style={styles.error}>
+          {error}
+        </Typography>
+      ) : null}
+      {isSubmitting ? (
+        <ActivityIndicator color={theme.colors.primary} />
+      ) : (
+        <Button title="Register" onPress={handleRegister} accessibilityLabel="Register" />
+      )}
+      <Button
+        title="Back to Login"
+        onPress={() => navigation.navigate('Login')}
+        accessibilityLabel="Back to login"
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 20 },
-  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginVertical: 10, borderRadius: 8 }
+  input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginVertical: 10, borderRadius: 8 },
+  error: { marginBottom: 10 },
 });

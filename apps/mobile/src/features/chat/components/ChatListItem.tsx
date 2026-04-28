@@ -5,24 +5,25 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Avatar } from '../../../shared/components/Avatar';
 import { Typography } from '../../../shared/components/Typography';
 import { theme } from '../../../shared/theme';
+import type { Chat } from '../types';
 
 interface ChatListItemProps {
-  chat: any;
+  chat: Chat;
   onPress: (chatId: string) => void;
 }
 
-// ⚡ Bolt Optimization: Wrap with React.memo to prevent re-renders when other items in the FlatList update
 export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onPress }) => {
   const currentUser = useAuthStore(state => state.user);
-  const otherParticipant = chat.participants.find((p: any) => p.userId !== currentUser?.id)?.user || chat.participants[0]?.user;
+  const otherParticipant =
+    chat.participants.find((participant) => participant.userId !== currentUser?.id)?.user ||
+    chat.participants[0]?.user;
 
   const formatTime = (timestamp?: string) => {
     if (!timestamp) return '';
     try {
-        const date = new Date(timestamp);
-        return format(date, 'HH:mm');
+      return format(new Date(timestamp), 'HH:mm');
     } catch {
-        return '';
+      return '';
     }
   };
 
@@ -31,15 +32,17 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
       style={styles.container}
       onPress={() => onPress(chat.id)}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Open chat with ${otherParticipant?.displayName ?? 'user'}`}
     >
       <View style={styles.avatarContainer}>
-        <Avatar name={otherParticipant?.displayName || 'User'} uri={otherParticipant?.avatarUrl} size={56} />
+        <Avatar name={otherParticipant?.displayName || 'User'} uri={otherParticipant?.avatarUrl ?? undefined} size={56} />
       </View>
 
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
           <Typography variant="h3" numberOfLines={1} style={styles.name}>
-            {otherParticipant?.displayName}
+            {otherParticipant?.displayName ?? 'Unknown user'}
           </Typography>
           <Typography variant="caption" color="textSecondary">
             {formatTime(chat.updatedAt)}
@@ -53,7 +56,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
             numberOfLines={2}
             style={styles.messageText}
           >
-            {chat.messages?.[0]?.text || 'No messages yet'}
+            {chat.lastMessage?.text || 'No messages yet'}
           </Typography>
         </View>
       </View>

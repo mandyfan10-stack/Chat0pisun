@@ -1,111 +1,158 @@
 import { create } from 'zustand';
-import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '../../auth/store/useAuthStore';
+import { io, type Socket } from 'socket.io-client';
 import { API_URL } from '../../../config/env';
+import { apiRequest } from '../../../shared/api/client';
+import { useAuthStore } from '../../auth/store/useAuthStore';
+import type { Chat, Message } from '../types';
 
-interface Message {
-  id: string;
-  chatId: string;
-  senderId: string;
-  text: string;
-  status: 'sending' | 'sent' | 'read' | 'error';
-  createdAt: string;
-}
-
-interface Chat {
-  id: string;
-  participants: any[];
-  messages: Message[];
-  updatedAt: string;
+interface MessageCreatedPayload {
+  tempId?: string;
+  message: Message;
 }
 
 interface ChatState {
   chats: Chat[];
   messages: Record<string, Message[]>;
   socket: Socket | null;
+  isLoadingChats: boolean;
+  isLoadingMessages: boolean;
+  error: string | null;
   initSocket: () => void;
+  disconnectSocket: () => void;
+  joinChat: (chatId: string) => void;
   fetchChats: () => Promise<void>;
   fetchMessages: (chatId: string) => Promise<void>;
-  sendMessage: (chatId: string, text: string) => void;
+  startChat: (targetUserId: string) => Promise<Chat>;
+  sendMessage: (chatId: string, text: string) => Promise<void>;
+  upsertChat: (chat: Chat) => void;
+  addMessage: (message: Message, tempId?: string) => void;
+  reset: () => void;
 }
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error ? error.message : fallback;
+};
 
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: [],
   messages: {},
   socket: null,
+  isLoadingChats: false,
+  isLoadingMessages: false,
+  error: null,
 
   initSocket: () => {
-    const token = useAuthStore.getState().token;
-    if (!token) return;
+    const token = useAuthStore.getState().accessToken;
+
+    if (!token || get().socket?.connected) {
+      return;
+    }
+
+    get().disconnectSocket();
 
     const socket = io(API_URL, {
-      auth: { token }
+      auth: { token },
     });
 
-    socket.on('connect', () => console.log('Socket connected'));
-
-    socket.on('receive_message', (message: Message) => {
-      set((state) => {
-        const chatMessages = state.messages[message.chatId] || [];
-        return {
-          messages: { ...state.messages, [message.chatId]: [message, ...chatMessages] }
-        };
-      });
+    socket.on('message:created', (payload: MessageCreatedPayload) => {
+      get().addMessage(payload.message, payload.tempId);
     });
 
-    socket.on('message_sent', ({ tempId, message }) => {
-      set((state) => {
-        const chatMessages = state.messages[message.chatId] || [];
-        const updated = chatMessages.map(m => m.id === tempId ? { ...message, status: 'sent' } : m);
-        return { messages: { ...state.messages, [message.chatId]: updated } };
-      });
+    socket.on('chat:updated', (chat: Chat) => {
+      get().upsertChat(chat);
     });
 
-    socket.on('message_error', ({ tempId, error }) => {
-       console.error("Message send failed:", error);
+    socket.on('message:error', (payload: { error?: string }) => {
+      set({ error: payload.error ?? 'Message failed' });
     });
 
     set({ socket });
   },
 
-  fetchChats: async () => {
-    const token = useAuthStore.getState().token;
-    const res = await fetch(`${API_URL}/api/chats`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const chats = await res.json();
-    set({ chats });
-  },
-
-  fetchMessages: async (chatId: string) => {
-    const token = useAuthStore.getState().token;
-    const res = await fetch(`${API_URL}/api/chats/${chatId}/messages`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const msgs = await res.json();
-    set((state) => ({ messages: { ...state.messages, [chatId]: msgs } }));
-  },
-
-  sendMessage: (chatId: string, text: string) => {
+  disconnectSocket: () => {
     const { socket } = get();
-    if (!socket) return;
+    socket?.disconnect();
+    set({ socket: null });
+  },
 
-    const tempId = `temp_${Date.now()}`;
-    const user = useAuthStore.getState().user;
+  joinChat: (chatId) => {
+    get().socket?.emit('chat:join', { chatId });
+  },
 
-    const tempMsg: Message = {
-      id: tempId,
-      chatId,
-      text,
-      senderId: user?.id || '',
-      status: 'sending',
-      createdAt: new Date().toISOString()
-    };
+  fetchChats: async () => {
+    set({ isLoadingChats: true, error: null });
 
+    try {
+      const chats = await apiRequest<Chat[]>('/api/chats');
+      set({ chats });
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Failed to load chats') });
+    } finally {
+      set({ isLoadingChats: false });
+    }
+  },
+
+  fetchMessages: async (chatId) => {
+    set({ isLoadingMessages: true, error: null });
+
+    try {
+      const messages = await apiRequest<Message[]>(`/api/chats/${chatId}/messages`);
+      set((state) => ({ messages: { ...state.messages, [chatId]: messages } }));
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Failed to load messages') });
+    } finally {
+      set({ isLoadingMessages: false });
+    }
+  },
+
+  startChat: async (targetUserId) => {
+    const chat = await apiRequest<Chat>('/api/chats', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId }),
+    });
+    get().upsertChat(chat);
+    return chat;
+  },
+
+  sendMessage: async (chatId, text) => {
+    const normalizedText = text.trim();
+
+    if (!normalizedText) {
+      return;
+    }
+
+    const message = await apiRequest<Message>(`/api/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ text: normalizedText }),
+    });
+    get().addMessage(message);
+    await get().fetchChats();
+  },
+
+  upsertChat: (chat) =>
     set((state) => ({
-      messages: { ...state.messages, [chatId]: [tempMsg, ...(state.messages[chatId] || [])] }
-    }));
+      chats: [chat, ...state.chats.filter((existing) => existing.id !== chat.id)].sort(
+        (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+      ),
+    })),
 
-    socket.emit('send_message', { chatId, text, tempId });
-  }
+  addMessage: (message, tempId) =>
+    set((state) => {
+      const chatMessages = state.messages[message.chatId] ?? [];
+      const withoutDuplicates = chatMessages.filter(
+        (existing) => existing.id !== message.id && existing.id !== tempId,
+      );
+
+      return {
+        messages: {
+          ...state.messages,
+          [message.chatId]: [message, ...withoutDuplicates],
+        },
+      };
+    }),
+
+  reset: () => {
+    get().disconnectSocket();
+    set({ chats: [], messages: {}, error: null, isLoadingChats: false, isLoadingMessages: false });
+  },
 }));

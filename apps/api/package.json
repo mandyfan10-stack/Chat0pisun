@@ -4,9 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.ts",
-    "test": "jest",
-    "build": "tsc"
+    "dev": "nodemon src/server.ts",
+    "lint": "tsc --noEmit --pretty false",
+    "typecheck": "tsc --noEmit --pretty false",
+    "test": "jest --runInBand",
+    "build": "tsc",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:setup": "node scripts/setup-sqlite.cjs",
+    "db:migrate": "prisma migrate dev"
   },
   "keywords": [],
   "author": "",

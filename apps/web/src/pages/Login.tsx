@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
 import { useAuthStore } from '../store/useStore';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { setUser } = useAuthStore();
+  const login = useAuthStore((state) => state.login);
+  const error = useAuthStore((state) => state.authError);
+  const isSubmitting = useAuthStore((state) => state.isSubmitting);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
-      const res = await api.post('/auth/login', { email, password });
-      setUser(res.data.user, res.data.accessToken);
-      localStorage.setItem('token', res.data.accessToken);
+      await login(email, password);
       navigate('/');
-    } catch (err) {
-      setError('Invalid credentials');
+    } catch {
+      // Store state renders the backend error.
     }
   };
 
@@ -48,8 +47,12 @@ export default function Login() {
               required
             />
           </div>
-          <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">
-            Login
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
         <div className="mt-4 text-center">
