@@ -1,0 +1,59 @@
+import React, { useMemo } from 'react';
+import { View, Image, StyleSheet } from 'react-native';
+import { theme } from '../theme';
+import { Typography } from './Typography';
+
+interface AvatarProps {
+  uri?: string;
+  name?: string;
+  size?: number;
+}
+
+// ⚡ Bolt Optimization: Wrap with React.memo to prevent unnecessary re-renders in FlatLists
+export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 }) => {
+  const safeName = name || 'U';
+
+  // ⚡ Bolt Optimization: Memoize initials generation to prevent recalculating on every re-render
+  const initials = useMemo(() => {
+    return safeName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }, [safeName]);
+
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={[styles.container, { width: size, height: size, borderRadius: size / 2 }]}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.container,
+        styles.placeholder,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}
+    >
+      <Typography variant="h3" color="white">
+        {initials}
+      </Typography>
+    </View>
+  );
+});
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: theme.colors.border,
+  },
+  placeholder: {
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
