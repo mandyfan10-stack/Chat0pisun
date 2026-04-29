@@ -9,10 +9,13 @@ import type { Chat } from '../types';
 
 interface ChatListItemProps {
   chat: Chat;
+  folder: 'personal' | 'work';
+  isUnread: boolean;
   onPress: (chatId: string) => void;
+  onToggleFolder: (chatId: string) => void;
 }
 
-export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onPress }) => {
+export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, folder, isUnread, onPress, onToggleFolder }) => {
   const currentUser = useAuthStore(state => state.user);
   const otherParticipant =
     chat.participants.find((participant) => participant.userId !== currentUser?.id)?.user ||
@@ -58,7 +61,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
           >
             {chat.lastMessage?.text || 'No messages yet'}
           </Typography>
-          {chat.lastMessage ? (
+          {isUnread ? (
             <View style={styles.unreadBadge}>
               <Typography variant="caption" color="white" style={styles.unreadText}>
                 1
@@ -66,6 +69,19 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
             </View>
           ) : null}
         </View>
+        <TouchableOpacity
+          style={styles.folderChip}
+          onPress={(event) => {
+            event.stopPropagation();
+            onToggleFolder(chat.id);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Move chat to ${folder === 'work' ? 'personal' : 'work'}`}
+        >
+          <Typography color="textSecondary" style={styles.folderText}>
+            {folder === 'work' ? 'Work' : 'Personal'}
+          </Typography>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -106,6 +122,20 @@ const styles = StyleSheet.create({
   messageText: {
     flex: 1,
     marginRight: theme.spacing.sm,
+  },
+  folderChip: {
+    alignSelf: 'flex-start',
+    marginTop: theme.spacing.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  folderText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   unreadBadge: {
     minWidth: 22,

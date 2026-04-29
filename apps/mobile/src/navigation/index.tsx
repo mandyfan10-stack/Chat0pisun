@@ -97,15 +97,6 @@ export const RootNavigator = () => {
             options={{
               title: 'Chat',
               headerBackVisible: true,
-              headerRight: () => (
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Chat options">
-                  <MaterialCommunityIcons
-                    name="dots-vertical"
-                    size={24}
-                    color={theme.colors.primary}
-                  />
-                </TouchableOpacity>
-              ),
             }}
           />
         </>

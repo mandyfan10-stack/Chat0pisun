@@ -31,16 +31,13 @@ export const SettingsScreen = () => {
 
       <View style={styles.section}>
         {settingsItems.map((item) => (
-          <TouchableOpacity
+          <View
             key={item.label}
             style={styles.row}
-            accessibilityRole="button"
-            accessibilityLabel={item.label}
           >
             <MaterialCommunityIcons name={item.icon} size={22} color={theme.colors.textSecondary} />
             <Typography style={styles.rowText}>{item.label}</Typography>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.textMuted} />
-          </TouchableOpacity>
+          </View>
         ))}
       </View>
 

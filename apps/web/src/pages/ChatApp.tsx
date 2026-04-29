@@ -1,24 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import {
-  Bell,
   CheckCheck,
-  Database,
-  HelpCircle,
-  Info,
   LogOut,
   Menu,
   MessageCircle,
   MoreVertical,
-  Moon,
-  Paperclip,
-  Phone,
   Search,
   Send,
-  Settings,
-  Shield,
   User as UserIcon,
+  X,
 } from 'lucide-react';
 import { api, SOCKET_URL } from '../services/api';
 import { type Chat, type Message, type Participant, type User, useAuthStore, useChatStore } from '../store/useStore';
@@ -71,14 +63,25 @@ const Avatar = ({ user, size = 'md' }: { user?: User; size?: 'sm' | 'md' | 'lg' 
   );
 };
 
-const sidebarItems = [
-  { label: 'Notifications', icon: Bell },
-  { label: 'Privacy', icon: Shield },
-  { label: 'Data and storage', icon: Database },
-  { label: 'Appearance', icon: Settings },
-  { label: 'Help', icon: HelpCircle },
-  { label: 'About', icon: Info },
-];
+type ChatFilter = 'all' | 'new' | 'personal' | 'work';
+type ChatFolder = 'personal' | 'work';
+
+const chatFilterLabels: Record<ChatFilter, string> = {
+  all: 'All',
+  new: 'New',
+  personal: 'Personal',
+  work: 'Work',
+};
+
+const getChatVersion = (chat: Chat) => chat.lastMessage?.id ?? chat.updatedAt;
+
+const readJsonStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? JSON.stringify(fallback)) as T;
+  } catch {
+    return fallback;
+  }
+};
 
 export default function ChatApp() {
   const user = useAuthStore((state) => state.user);
@@ -102,13 +105,65 @@ export default function ChatApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<ChatFilter>('all');
+  const [chatFolders, setChatFolders] = useState<Record<string, ChatFolder>>(() =>
+    readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {}),
+  );
+  const [readChatVersions, setReadChatVersions] = useState<Record<string, string>>(() =>
+    readJsonStorage<Record<string, string>>('nextgram.readChats', {}),
+  );
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   const activeChat = chats.find((chat) => chat.id === activeChatId) ?? null;
   const activeParticipant = activeChat && user ? getOtherParticipant(activeChat, user.id) : undefined;
+  const getChatFolder = useCallback((chat: Chat) => chatFolders[chat.id] ?? 'personal', [chatFolders]);
+  const isChatUnread = useCallback(
+    (chat: Chat) => Boolean(user && chat.lastMessage && chat.lastMessage.senderId !== user.id && readChatVersions[chat.id] !== getChatVersion(chat)),
+    [readChatVersions, user],
+  );
+  const markChatAsRead = useCallback((chat: Chat) => {
+    setReadChatVersions((current) => ({ ...current, [chat.id]: getChatVersion(chat) }));
+  }, []);
   const visibleMessages = useMemo(
     () => (activeChatId ? [...(messages[activeChatId] ?? [])].reverse() : []),
     [activeChatId, messages],
+  );
+  const filteredChats = useMemo(() => {
+    return chats.filter((chat) => {
+      if (activeFilter === 'new') {
+        return isChatUnread(chat);
+      }
+
+      if (activeFilter === 'personal') {
+        return getChatFolder(chat) === 'personal';
+      }
+
+      if (activeFilter === 'work') {
+        return getChatFolder(chat) === 'work';
+      }
+
+      return true;
+    });
+  }, [activeFilter, chats, getChatFolder, isChatUnread]);
+  const chatTabs = useMemo(
+    () =>
+      (Object.keys(chatFilterLabels) as ChatFilter[]).map((filter) => ({
+        filter,
+        label: chatFilterLabels[filter],
+        count:
+          filter === 'all'
+            ? chats.length
+            : chats.filter((chat) => {
+                if (filter === 'new') {
+                  return isChatUnread(chat);
+                }
+
+                return getChatFolder(chat) === filter;
+              }).length,
+      })),
+    [chats, getChatFolder, isChatUnread],
   );
 
   useEffect(() => {
@@ -116,6 +171,14 @@ export default function ChatApp() {
       void fetchChats();
     }
   }, [fetchChats, user]);
+
+  useEffect(() => {
+    localStorage.setItem('nextgram.chatFolders', JSON.stringify(chatFolders));
+  }, [chatFolders]);
+
+  useEffect(() => {
+    localStorage.setItem('nextgram.readChats', JSON.stringify(readChatVersions));
+  }, [readChatVersions]);
 
   useEffect(() => {
     if (!user || !accessToken) {
@@ -129,6 +192,9 @@ export default function ChatApp() {
 
     socket.on('message:created', (payload: MessageCreatedPayload) => {
       addMessage(payload.message, payload.tempId);
+      if (payload.message.senderId === user.id || payload.message.chatId === activeChatId) {
+        setReadChatVersions((current) => ({ ...current, [payload.message.chatId]: payload.message.id }));
+      }
     });
     socket.on('chat:updated', (chat: Chat) => {
       upsertChat(chat);
@@ -141,7 +207,7 @@ export default function ChatApp() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [accessToken, addMessage, upsertChat, user]);
+  }, [accessToken, activeChatId, addMessage, upsertChat, user]);
 
   useEffect(() => {
     if (!activeChatId) {
@@ -178,6 +244,16 @@ export default function ChatApp() {
     setSearchQuery('');
     setSearchResults([]);
     setActiveChatId(chat.id);
+    markChatAsRead(chat);
+  };
+
+  const handleSelectChat = (chat: Chat) => {
+    setActiveChatId(chat.id);
+    markChatAsRead(chat);
+  };
+
+  const handleSetChatFolder = (chatId: string, folder: ChatFolder) => {
+    setChatFolders((current) => ({ ...current, [chatId]: folder }));
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -212,8 +288,10 @@ export default function ChatApp() {
           <div className="mb-5 flex items-center justify-between">
             <button
               type="button"
+              onClick={() => setIsProfileMenuOpen((current) => !current)}
               className="grid h-10 w-10 place-items-center rounded-full text-slate-300 transition hover:bg-white/10 hover:text-white"
-              aria-label="Open menu"
+              aria-expanded={isProfileMenuOpen}
+              aria-label="Open profile menu"
             >
               <Menu size={21} />
             </button>
@@ -238,6 +316,20 @@ export default function ChatApp() {
               <div className="truncate text-xs text-slate-400">@{user.username}</div>
             </div>
           </div>
+
+          {isProfileMenuOpen ? (
+            <div className="mb-4 rounded-2xl border border-white/10 bg-[#121b28] p-3 shadow-xl shadow-black/20">
+              <div className="mb-3 text-xs text-slate-400">{user.email}</div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-200 transition hover:bg-red-500/10"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </div>
+          ) : null}
 
           <form onSubmit={handleSearch} className="relative">
             <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -280,21 +372,18 @@ export default function ChatApp() {
         </div>
 
         <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3 text-xs">
-          {[
-            ['All', chats.length],
-            ['New', 0],
-            ['Personal', 0],
-            ['Work', 0],
-          ].map(([label, count], index) => (
+          {chatTabs.map(({ filter, label, count }) => (
             <button
-              key={label}
+              key={filter}
               type="button"
+              onClick={() => setActiveFilter(filter)}
               className={`rounded-full px-3 py-1.5 transition ${
-                index === 0 ? 'bg-[#5288c1] text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                activeFilter === filter ? 'bg-[#5288c1] text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
+              aria-pressed={activeFilter === filter}
             >
               {label}
-              {Number(count) > 0 ? <span className="ml-1 opacity-75">{count}</span> : null}
+              {count > 0 ? <span className="ml-1 opacity-75">{count}</span> : null}
             </button>
           ))}
         </div>
@@ -310,16 +399,28 @@ export default function ChatApp() {
               <div className="text-sm font-medium text-white">No chats yet</div>
               <div className="mt-1 text-xs leading-5 text-slate-400">Search for a user to start a conversation.</div>
             </div>
+          ) : filteredChats.length === 0 ? (
+            <div className="m-4 rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-center">
+              <div className="text-sm font-medium text-white">No {chatFilterLabels[activeFilter].toLowerCase()} chats</div>
+              <div className="mt-1 text-xs leading-5 text-slate-400">
+                {activeFilter === 'work'
+                  ? 'Open a chat and move it to Work from the chat details panel.'
+                  : activeFilter === 'new'
+                    ? 'Unread incoming messages will appear here.'
+                    : 'Try another folder or start a new chat.'}
+              </div>
+            </div>
           ) : (
-            chats.map((chat) => {
+            filteredChats.map((chat) => {
               const otherParticipant = getOtherParticipant(chat, user.id);
               const isActive = activeChatId === chat.id;
+              const isUnread = isChatUnread(chat);
 
               return (
                 <button
                   key={chat.id}
                   type="button"
-                  onClick={() => setActiveChatId(chat.id)}
+                  onClick={() => handleSelectChat(chat)}
                   className={`group flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
                     isActive ? 'bg-[#182331]' : 'hover:bg-white/[0.04]'
                   }`}
@@ -335,8 +436,11 @@ export default function ChatApp() {
                     <span className="mt-1 block truncate text-sm text-slate-400">
                       {chat.lastMessage?.text ?? 'No messages yet'}
                     </span>
+                    <span className="mt-2 inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      {getChatFolder(chat)}
+                    </span>
                   </span>
-                  {chat.lastMessage ? (
+                  {isUnread ? (
                     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#5288c1] text-[11px] font-semibold text-white">
                       1
                     </span>
@@ -348,7 +452,7 @@ export default function ChatApp() {
         </div>
       </aside>
 
-      <main className={`${activeChat ? 'flex' : 'hidden lg:flex'} min-w-0 flex-1 flex-col bg-[#0b121a]`}>
+      <main className={`${activeChat ? 'flex' : 'hidden lg:flex'} relative min-w-0 flex-1 flex-col bg-[#0b121a]`}>
         {activeChat ? (
           <>
             <header className="flex h-[76px] items-center justify-between border-b border-white/10 bg-[#101a25]/95 px-4 sm:px-6">
@@ -373,14 +477,9 @@ export default function ChatApp() {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
+                  onClick={() => setIsDetailsOpen((current) => !current)}
                   className="grid h-10 w-10 place-items-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
-                  aria-label="Call"
-                >
-                  <Phone size={19} />
-                </button>
-                <button
-                  type="button"
-                  className="grid h-10 w-10 place-items-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  aria-expanded={isDetailsOpen}
                   aria-label="Chat options"
                 >
                   <MoreVertical size={20} />
@@ -435,13 +534,6 @@ export default function ChatApp() {
 
             <footer className="border-t border-white/10 bg-[#101a25]/95 px-4 py-3 sm:px-6">
               <form onSubmit={handleSendMessage} className="mx-auto flex max-w-4xl items-end gap-2">
-                <button
-                  type="button"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-[#7dd3fc]"
-                  aria-label="Attach file"
-                >
-                  <Paperclip size={20} />
-                </button>
                 <input
                   type="text"
                   placeholder="Message"
@@ -460,6 +552,51 @@ export default function ChatApp() {
                 </button>
               </form>
             </footer>
+
+            {isDetailsOpen ? (
+              <aside className="absolute right-0 top-0 z-30 flex h-full w-full max-w-sm flex-col border-l border-white/10 bg-[#101a25] p-5 shadow-2xl shadow-black/40 sm:w-[340px]">
+                <div className="mb-6 flex items-center justify-between">
+                  <div className="text-sm font-semibold text-white">Chat details</div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailsOpen(false)}
+                    className="grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
+                    aria-label="Close chat details"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="mb-6 flex flex-col items-center text-center">
+                  <Avatar user={activeParticipant?.user} size="lg" />
+                  <div className="mt-3 text-lg font-semibold text-white">
+                    {activeParticipant?.user.displayName ?? 'Chat'}
+                  </div>
+                  <div className="mt-1 text-sm text-slate-400">@{activeParticipant?.user.username ?? 'user'}</div>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-[#121b28] p-4">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Folder</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['personal', 'work'] as ChatFolder[]).map((folder) => (
+                      <button
+                        key={folder}
+                        type="button"
+                        onClick={() => handleSetChatFolder(activeChat.id, folder)}
+                        className={`rounded-2xl px-3 py-2 text-sm font-semibold capitalize transition ${
+                          getChatFolder(activeChat) === folder
+                            ? 'bg-[#5288c1] text-white'
+                            : 'border border-white/10 text-slate-300 hover:bg-white/5'
+                        }`}
+                        aria-pressed={getChatFolder(activeChat) === folder}
+                      >
+                        {folder}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+            ) : null}
           </>
         ) : (
           <div className="flex flex-1">
@@ -483,29 +620,22 @@ export default function ChatApp() {
                   <div className="truncate text-xs text-slate-400">{user.email}</div>
                 </div>
               </div>
-              <div className="space-y-1">
-                {sidebarItems.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-slate-300 transition hover:bg-white/[0.04] hover:text-white"
-                    >
-                      <Icon size={18} className="text-slate-500" />
-                      {item.label}
-                    </button>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-2">
+                {chatTabs.map((tab) => (
+                  <div key={tab.filter} className="rounded-2xl border border-white/10 bg-[#121b28] p-3">
+                    <div className="text-2xl font-semibold text-white">{tab.count}</div>
+                    <div className="mt-1 text-xs text-slate-400">{tab.label}</div>
+                  </div>
+                ))}
               </div>
               <div className="mt-6 border-t border-white/10 pt-4">
                 <button
                   type="button"
+                  onClick={handleLogout}
                   className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-slate-300 transition hover:bg-white/[0.04] hover:text-white"
                 >
-                  <Moon size={18} className="text-slate-500" />
-                  Dark mode
+                  <LogOut size={18} className="text-red-300" />
+                  Logout
                 </button>
               </div>
             </aside>
