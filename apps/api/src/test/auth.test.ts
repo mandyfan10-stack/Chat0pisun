@@ -148,20 +148,26 @@ describe('users, chats, and messages', () => {
   it('requires auth for user search and returns limited safe DTOs', async () => {
     const current = await createAuthUser('searcher');
 
-    await request(app).get('/api/users/search?q=al').expect(401);
+    await request(app).get('/api/users/search?q=ale').expect(401);
 
     for (let index = 0; index < 12; index += 1) {
       await registerUser(`alex_${index}`).expect(201);
     }
 
     const response = await request(app)
-      .get('/api/users/search?q=al')
+      .get('/api/users/search?q=ale')
       .set('Authorization', authHeader(current.accessToken))
       .expect(200);
 
     expect(response.body).toHaveLength(10);
     expect(response.body.every((user: { passwordHash?: string }) => user.passwordHash === undefined)).toBe(true);
     expect(response.body.some((user: { id: string }) => user.id === current.user.id)).toBe(false);
+
+    const shortResponse = await request(app)
+      .get('/api/users/search?q=al')
+      .set('Authorization', authHeader(current.accessToken))
+      .expect(200);
+    expect(shortResponse.body).toHaveLength(0);
   });
 
   it('requires auth to create chats and never uses a hardcoded current user', async () => {
