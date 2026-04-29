@@ -145,6 +145,8 @@ export default function ChatApp() {
     return null;
   }
 
+  const activeChatOtherParticipant = activeChat ? getOtherParticipant(activeChat, user.id) : null;
+
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
       <div className="flex w-80 flex-col border-r bg-white">
@@ -230,10 +232,10 @@ export default function ChatApp() {
           <>
             <div className="flex items-center gap-3 border-b bg-white p-4 shadow-sm">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 font-bold text-gray-600">
-                {getOtherParticipant(activeChat, user.id)?.user.username[0]?.toUpperCase() ?? '?'}
+                {activeChatOtherParticipant?.user.username[0]?.toUpperCase() ?? '?'}
               </div>
               <h2 className="text-lg font-semibold">
-                {getOtherParticipant(activeChat, user.id)?.user.displayName ?? 'Chat'}
+                {activeChatOtherParticipant?.user.displayName ?? 'Chat'}
               </h2>
             </div>
 
