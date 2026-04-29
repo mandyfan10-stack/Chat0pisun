@@ -23,8 +23,18 @@ const BottomTabs = () => {
       screenOptions={{
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
-        headerStyle: { backgroundColor: theme.colors.background },
+        headerStyle: { backgroundColor: theme.colors.backgroundSecondary },
+        headerTintColor: theme.colors.text,
+        headerTitleStyle: { fontWeight: '700' },
         headerShadowVisible: false,
+        tabBarStyle: {
+          backgroundColor: theme.colors.backgroundSecondary,
+          borderTopColor: theme.colors.border,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >
       <Tab.Screen
@@ -65,8 +75,11 @@ export const RootNavigator = () => {
   return (
     <Stack.Navigator
       screenOptions={{
+        contentStyle: { backgroundColor: theme.colors.background },
         headerStyle: { backgroundColor: theme.colors.backgroundSecondary },
         headerTintColor: theme.colors.text,
+        headerTitleStyle: { fontWeight: '700' },
+        headerShadowVisible: false,
         headerBackVisible: false,
       }}
     >
@@ -84,15 +97,6 @@ export const RootNavigator = () => {
             options={{
               title: 'Chat',
               headerBackVisible: true,
-              headerRight: () => (
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Chat options">
-                  <MaterialCommunityIcons
-                    name="dots-vertical"
-                    size={24}
-                    color={theme.colors.primary}
-                  />
-                </TouchableOpacity>
-              ),
             }}
           />
         </>

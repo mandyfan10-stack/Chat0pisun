@@ -9,10 +9,13 @@ import type { Chat } from '../types';
 
 interface ChatListItemProps {
   chat: Chat;
+  folder: 'personal' | 'work';
+  isUnread: boolean;
   onPress: (chatId: string) => void;
+  onToggleFolder: (chatId: string) => void;
 }
 
-export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onPress }) => {
+export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, folder, isUnread, onPress, onToggleFolder }) => {
   const currentUser = useAuthStore(state => state.user);
   const otherParticipant =
     chat.participants.find((participant) => participant.userId !== currentUser?.id)?.user ||
@@ -31,7 +34,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
     <TouchableOpacity
       style={styles.container}
       onPress={() => onPress(chat.id)}
-      activeOpacity={0.7}
+      activeOpacity={0.82}
       accessibilityRole="button"
       accessibilityLabel={`Open chat with ${otherParticipant?.displayName ?? 'user'}`}
     >
@@ -44,7 +47,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
           <Typography variant="h3" numberOfLines={1} style={styles.name}>
             {otherParticipant?.displayName ?? 'Unknown user'}
           </Typography>
-          <Typography variant="caption" color="textSecondary">
+          <Typography variant="caption" color="textMuted">
             {formatTime(chat.updatedAt)}
           </Typography>
         </View>
@@ -58,7 +61,27 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
           >
             {chat.lastMessage?.text || 'No messages yet'}
           </Typography>
+          {isUnread ? (
+            <View style={styles.unreadBadge}>
+              <Typography variant="caption" color="white" style={styles.unreadText}>
+                1
+              </Typography>
+            </View>
+          ) : null}
         </View>
+        <TouchableOpacity
+          style={styles.folderChip}
+          onPress={(event) => {
+            event.stopPropagation();
+            onToggleFolder(chat.id);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Move chat to ${folder === 'work' ? 'personal' : 'work'}`}
+        >
+          <Typography color="textSecondary" style={styles.folderText}>
+            {folder === 'work' ? 'Work' : 'Personal'}
+          </Typography>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -67,8 +90,9 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.backgroundSecondary,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border,
   },
@@ -98,5 +122,31 @@ const styles = StyleSheet.create({
   messageText: {
     flex: 1,
     marginRight: theme.spacing.sm,
+  },
+  folderChip: {
+    alignSelf: 'flex-start',
+    marginTop: theme.spacing.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  folderText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadText: {
+    fontWeight: '700',
   },
 });

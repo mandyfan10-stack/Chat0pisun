@@ -54,7 +54,12 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
         </View>
       ) : chatMessages.length === 0 ? (
         <View style={styles.center}>
-          <Typography color="textSecondary">No messages yet</Typography>
+          <View style={styles.emptyCard}>
+            <Typography variant="h3" align="center">Start the conversation</Typography>
+            <Typography color="textSecondary" align="center" style={styles.emptyText}>
+              Messages are persisted through the backend.
+            </Typography>
+          </View>
         </View>
       ) : (
         <FlatList
@@ -67,12 +72,13 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
           initialNumToRender={20}
           maxToRenderPerBatch={10}
           windowSize={5}
+          ListFooterComponent={<Typography color="textMuted" align="center" style={styles.dateChip}>Today</Typography>}
         />
       )}
       {error ? (
-        <Typography color="error" align="center" style={styles.error}>
-          {error}
-        </Typography>
+        <View style={styles.error}>
+          <Typography color="error" align="center">{error}</Typography>
+        </View>
       ) : null}
       <ChatInput onSend={handleSend} />
       <View style={{ height: Platform.OS === 'ios' ? insets.bottom : 0, backgroundColor: theme.colors.backgroundSecondary }} />
@@ -83,17 +89,42 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EFEFEF',
+    backgroundColor: theme.colors.background,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: theme.spacing.lg,
   },
   listContent: {
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
   },
   error: {
     padding: theme.spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.error,
+    backgroundColor: 'rgba(248,113,113,0.08)',
+  },
+  emptyCard: {
+    width: '100%',
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  emptyText: {
+    marginTop: theme.spacing.sm,
+    lineHeight: 21,
+  },
+  dateChip: {
+    alignSelf: 'center',
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    marginVertical: theme.spacing.sm,
   },
 });

@@ -22,7 +22,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
       case 'sending':
         return <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.textSecondary} />;
       case 'read':
-        return <MaterialCommunityIcons name="check-all" size={14} color={theme.colors.primary} />;
+        return <MaterialCommunityIcons name="check-all" size={14} color={theme.colors.primaryLight} />;
       case 'error':
         return <MaterialCommunityIcons name="alert-circle-outline" size={14} color={theme.colors.error} />;
       case 'sent':
@@ -63,18 +63,18 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '80%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
     position: 'relative',
   },
   bubbleMine: {
     backgroundColor: theme.colors.messageSent,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 6,
   },
   bubbleOther: {
     backgroundColor: theme.colors.messageReceived,
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.border,
   },
@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
   tail: {
     position: 'absolute',
     bottom: 0,
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     zIndex: -1,
   },
   tailMine: {

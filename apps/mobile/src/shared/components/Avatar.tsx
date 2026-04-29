@@ -9,11 +9,9 @@ interface AvatarProps {
   size?: number;
 }
 
-// ⚡ Bolt Optimization: Wrap with React.memo to prevent unnecessary re-renders in FlatLists
 export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 }) => {
   const safeName = name || 'U';
 
-  // ⚡ Bolt Optimization: Memoize initials generation to prevent recalculating on every re-render
   const initials = useMemo(() => {
     return safeName
       .split(' ')
@@ -49,7 +47,9 @@ export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
   },
   placeholder: {
     backgroundColor: theme.colors.primary,

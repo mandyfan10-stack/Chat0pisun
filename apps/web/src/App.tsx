@@ -10,7 +10,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isHydrating = useAuthStore((state) => state.isHydrating);
 
   if (isHydrating) {
-    return <div className="grid min-h-screen place-items-center text-sm text-gray-500">Loading session...</div>;
+    return <div className="nextgram-bg grid min-h-screen place-items-center text-sm text-slate-400">Loading session...</div>;
   }
 
   if (!user) {

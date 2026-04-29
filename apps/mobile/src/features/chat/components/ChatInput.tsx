@@ -30,6 +30,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend }) => {
         <TextInput
           style={styles.input}
           placeholder="Message"
+          placeholderTextColor={theme.colors.textMuted}
           value={text}
           onChangeText={setText}
           multiline
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.input,
     borderRadius: 20,
     marginHorizontal: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,

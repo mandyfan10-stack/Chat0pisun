@@ -11,6 +11,8 @@ export interface SafeUserDto {
   createdAt: Date;
 }
 
+export type PublicUserDto = Omit<SafeUserDto, 'email'>;
+
 export interface ParticipantDto {
   id: string;
   chatId: string;
@@ -62,6 +64,16 @@ type ChatWithRelations = Chat & {
 export const toSafeUserDto = (user: SafeUserLike): SafeUserDto => ({
   id: user.id,
   email: user.email,
+  username: user.username,
+  displayName: user.displayName,
+  avatarUrl: user.avatarUrl,
+  bio: user.bio,
+  lastSeen: user.lastSeen,
+  createdAt: user.createdAt,
+});
+
+export const toPublicUserDto = (user: Omit<SafeUserLike, 'email'>): PublicUserDto => ({
+  id: user.id,
   username: user.username,
   displayName: user.displayName,
   avatarUrl: user.avatarUrl,
