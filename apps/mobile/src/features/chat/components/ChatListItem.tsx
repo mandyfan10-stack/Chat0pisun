@@ -31,7 +31,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
     <TouchableOpacity
       style={styles.container}
       onPress={() => onPress(chat.id)}
-      activeOpacity={0.7}
+      activeOpacity={0.82}
       accessibilityRole="button"
       accessibilityLabel={`Open chat with ${otherParticipant?.displayName ?? 'user'}`}
     >
@@ -44,7 +44,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
           <Typography variant="h3" numberOfLines={1} style={styles.name}>
             {otherParticipant?.displayName ?? 'Unknown user'}
           </Typography>
-          <Typography variant="caption" color="textSecondary">
+          <Typography variant="caption" color="textMuted">
             {formatTime(chat.updatedAt)}
           </Typography>
         </View>
@@ -58,6 +58,13 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
           >
             {chat.lastMessage?.text || 'No messages yet'}
           </Typography>
+          {chat.lastMessage ? (
+            <View style={styles.unreadBadge}>
+              <Typography variant="caption" color="white" style={styles.unreadText}>
+                1
+              </Typography>
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -67,8 +74,9 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, onP
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.backgroundSecondary,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border,
   },
@@ -98,5 +106,17 @@ const styles = StyleSheet.create({
   messageText: {
     flex: 1,
     marginRight: theme.spacing.sm,
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unreadText: {
+    fontWeight: '700',
   },
 });

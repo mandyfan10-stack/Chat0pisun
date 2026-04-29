@@ -2,10 +2,24 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation';
 import { useAuthStore } from './src/features/auth/store/useAuthStore';
 import { useChatStore } from './src/features/chat/store/useChatStore';
+import { theme } from './src/shared/theme';
+
+const navigationTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: theme.colors.primary,
+    background: theme.colors.background,
+    card: theme.colors.backgroundSecondary,
+    text: theme.colors.text,
+    border: theme.colors.border,
+    notification: theme.colors.primary,
+  },
+};
 
 export default function App() {
   const user = useAuthStore((state) => state.user);
@@ -29,18 +43,18 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+        <ActivityIndicator color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer theme={navigationTheme}>
         <RootNavigator />
       </NavigationContainer>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </SafeAreaProvider>
   );
 }

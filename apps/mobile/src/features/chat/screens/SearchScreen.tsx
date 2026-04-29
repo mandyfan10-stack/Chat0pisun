@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Typography } from '../../../shared/components/Typography';
+import { Avatar } from '../../../shared/components/Avatar';
 import { apiRequest } from '../../../shared/api/client';
 import { useChatStore } from '../store/useChatStore';
 import type { User } from '../types';
@@ -55,19 +56,27 @@ export const SearchScreen = ({ navigation }: SearchScreenProps) => {
     <View style={styles.container}>
       <TextInput
         style={styles.input}
-        placeholder="Search users..."
+        placeholder="Search users"
+        placeholderTextColor={theme.colors.textMuted}
         value={query}
         onChangeText={handleSearch}
         autoCapitalize="none"
         accessibilityLabel="Search users"
       />
       {isSearching ? <ActivityIndicator color={theme.colors.primary} /> : null}
-      {error ? <Typography color="error">{error}</Typography> : null}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Typography color="error">{error}</Typography>
+        </View>
+      ) : null}
       {!isSearching && query.trim().length >= 2 && results.length === 0 && !error ? (
-        <Typography color="textSecondary">No users found</Typography>
+        <View style={styles.emptyCard}>
+          <Typography color="textSecondary" align="center">No users found</Typography>
+        </View>
       ) : null}
       <FlatList
         data={results}
+        contentContainerStyle={styles.listContent}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -76,7 +85,11 @@ export const SearchScreen = ({ navigation }: SearchScreenProps) => {
             accessibilityRole="button"
             accessibilityLabel={`Start chat with ${item.displayName}`}
           >
-            <Typography>{item.displayName} (@{item.username})</Typography>
+            <Avatar name={item.displayName} uri={item.avatarUrl ?? undefined} size={44} />
+            <View style={styles.itemText}>
+              <Typography variant="h3" numberOfLines={1}>{item.displayName}</Typography>
+              <Typography color="textSecondary" numberOfLines={1}>@{item.username}</Typography>
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -85,7 +98,51 @@ export const SearchScreen = ({ navigation }: SearchScreenProps) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  input: { padding: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 16 },
-  item: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  container: {
+    flex: 1,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  input: {
+    minHeight: 52,
+    paddingHorizontal: theme.spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.input,
+    color: theme.colors.text,
+  },
+  listContent: {
+    paddingBottom: theme.spacing.xl,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    marginBottom: theme.spacing.sm,
+  },
+  itemText: {
+    flex: 1,
+  },
+  errorBox: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.error,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    backgroundColor: 'rgba(248,113,113,0.08)',
+  },
+  emptyCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+  },
 });
