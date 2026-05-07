@@ -16,3 +16,8 @@
 **Vulnerability:** The API implicitly assumed properties like `req.body.email` and `req.query.q` were strings without explicit validation. Attackers could send JSON arrays or objects (e.g. `{"email": {"$gte": ""}}`) bypassing initial checks and causing methods like `bcrypt.hash`, `bcrypt.compare`, or ORM queries to crash the server (500 Internal Server Error) or behave unexpectedly.
 **Learning:** Destructuring request payloads does not enforce primitive typing. Assuming inputs are strings leaves the system vulnerable to Type Injection and resource exhaustion attacks (DoS).
 **Prevention:** Always strictly validate the type of incoming request properties (e.g., `typeof email === 'string'`) before passing them to internal functions or ORM operations.
+
+## 2024-03-24 - Unsafe Test Secrets in Environment Configuration
+**Vulnerability:** A hardcoded test secret ('test-jwt-secret-with-enough-length') was used as a fallback for the JWT_SECRET environment variable if NODE_ENV was set to 'test'. This allowed attackers to potentially manipulate NODE_ENV to bypass authentication if the environment configuration was compromised or incorrectly deployed.
+**Learning:** Hardcoded secrets in code, even for specific non-production environments, pose a significant risk as they might be exposed or unintentionally used in other contexts.
+**Prevention:** Rely strictly on external environment variables for secrets, even in test environments. Use test setup files to mock or provide these environment variables explicitly during testing, instead of hardcoding fallback values directly in the application's environment configuration parsing logic.

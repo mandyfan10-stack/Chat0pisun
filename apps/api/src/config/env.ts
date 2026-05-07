@@ -12,9 +12,7 @@ const nodeEnv = process.env.NODE_ENV ?? 'development';
 const databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
 process.env.DATABASE_URL = databaseUrl;
 
-const jwtSecret =
-  process.env.JWT_SECRET ??
-  (nodeEnv === 'test' ? 'test-jwt-secret-with-enough-length' : undefined);
+const jwtSecret = process.env.JWT_SECRET;
 
 if (!jwtSecret || jwtSecret.length < 16) {
   throw new Error('JWT_SECRET must be set to a long random value.');
