@@ -19,7 +19,8 @@ export default function Register() {
     try {
       await register({ email, username, displayName, password });
       navigate('/');
-    } catch {
+    } catch (error) {
+      console.error('Registration failed:', error);
       // Store state renders the backend error.
     }
   };

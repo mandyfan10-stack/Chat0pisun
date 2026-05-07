@@ -17,7 +17,8 @@ export default function Login() {
     try {
       await login(email, password);
       navigate('/');
-    } catch {
+    } catch (error) {
+      console.error('Login failed:', error);
       // Store state renders the backend error.
     }
   };
