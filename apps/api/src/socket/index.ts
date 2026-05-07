@@ -1,7 +1,6 @@
 import type { Server as HttpServer } from 'http';
 import { Server, type Socket } from 'socket.io';
 import { env } from '../config/env';
-import { prisma } from '../config/db';
 import { assertChatParticipant, createMessageInChat } from '../services/chats';
 import type { ChatDto, MessageDto } from '../utils/dto';
 import { verifyAccessToken } from '../utils/tokens';
@@ -46,14 +45,11 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
       }
 
       const tokenUser = verifyAccessToken(token);
-      const user = await prisma.user.findUnique({
-        where: { id: tokenUser.userId },
-        select: { id: true, username: true },
-      });
 
-      if (!user) {
-        return next(new Error('Invalid token'));
-      }
+      const user = {
+        id: tokenUser.userId,
+        username: tokenUser.username,
+      };
 
       socket.data.user = user;
       return next();
