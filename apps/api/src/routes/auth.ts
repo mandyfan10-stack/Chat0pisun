@@ -1,4 +1,5 @@
-import { Router, type RequestHandler } from 'express';
+import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { env } from '../config/env';
 import { prisma } from '../config/db';
 import { getAuthUser, requireAuth } from '../middleware/auth';
@@ -20,47 +21,14 @@ import {
 
 export const authRouter = Router();
 
-type RateLimitBucket = {
-  count: number;
-  resetAt: number;
-};
-
-const rateLimitBuckets = new Map<string, RateLimitBucket>();
-
-// Periodically clean up expired rate-limit buckets to prevent memory leaks.
-const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-const rateLimitCleanupTimer = setInterval(() => {
-  const now = Date.now();
-
-  for (const [key, bucket] of rateLimitBuckets) {
-    if (bucket.resetAt <= now) {
-      rateLimitBuckets.delete(key);
-    }
-  }
-}, RATE_LIMIT_CLEANUP_INTERVAL_MS);
-rateLimitCleanupTimer.unref(); // Don't prevent process exit
-
-const authRateLimit: RequestHandler = (req, _res, next) => {
-  if (env.isTest) {
-    return next();
-  }
-
-  const key = req.ip ?? 'unknown';
-  const now = Date.now();
-  const bucket = rateLimitBuckets.get(key);
-
-  if (!bucket || bucket.resetAt <= now) {
-    rateLimitBuckets.set(key, { count: 1, resetAt: now + env.authRateLimitWindowMs });
-    return next();
-  }
-
-  if (bucket.count >= env.authRateLimitMax) {
-    return next(new HttpError(429, 'Too many auth requests. Try again later.', 'RATE_LIMITED'));
-  }
-
-  bucket.count += 1;
-  return next();
-};
+const authRateLimit = rateLimit({
+  windowMs: env.authRateLimitWindowMs,
+  limit: env.authRateLimitMax,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many auth requests. Try again later.' } },
+  skip: () => env.isTest,
+});
 
 const issueSession = async (user: { id: string; username: string }) => {
   const refreshToken = createRefreshToken();

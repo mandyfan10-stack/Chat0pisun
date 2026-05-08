@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { useAuthStore, useChatStore } from './useStore';
 import { api } from '../services/api';
 
@@ -27,8 +27,10 @@ describe('useChatStore', () => {
   });
 
   it('upserts chats and sorts them by updatedAt', () => {
-    const chat1 = { id: '1', updatedAt: '2026-05-01T10:00:00Z', participants: [], lastMessage: null, createdAt: '' };
-    const chat2 = { id: '2', updatedAt: '2026-05-02T10:00:00Z', participants: [], lastMessage: null, createdAt: '' };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chat1 = { id: '1', updatedAt: '2026-05-01T10:00:00Z', participants: [], lastMessage: null, createdAt: '' } as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chat2 = { id: '2', updatedAt: '2026-05-02T10:00:00Z', participants: [], lastMessage: null, createdAt: '' } as any;
 
     useChatStore.getState().upsertChat(chat1);
     useChatStore.getState().upsertChat(chat2);
@@ -39,7 +41,8 @@ describe('useChatStore', () => {
   });
 
   it('adds messages and avoids duplicates', () => {
-    const message = { id: 'm1', chatId: 'c1', senderId: 'u1', text: 'hi', createdAt: '2026-05-01T10:00:00Z', updatedAt: null, readAt: null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const message = { id: 'm1', chatId: 'c1', senderId: 'u1', text: 'hi', createdAt: '2026-05-01T10:00:00Z', updatedAt: null, readAt: null } as any;
     
     useChatStore.getState().addMessage(message);
     useChatStore.getState().addMessage(message); // Duplicate
@@ -50,8 +53,10 @@ describe('useChatStore', () => {
   });
 
   it('marks messages as read locally', () => {
-    const msg1 = { id: 'm1', chatId: 'c1', senderId: 'other', text: 'hi', createdAt: '...', updatedAt: null, readAt: null };
-    const msg2 = { id: 'm2', chatId: 'c1', senderId: 'me', text: 'hello', createdAt: '...', updatedAt: null, readAt: null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const msg1 = { id: 'm1', chatId: 'c1', senderId: 'other', text: 'hi', createdAt: '...', updatedAt: null, readAt: null } as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const msg2 = { id: 'm2', chatId: 'c1', senderId: 'me', text: 'hello', createdAt: '...', updatedAt: null, readAt: null } as any;
     
     useChatStore.setState({ messages: { 'c1': [msg1, msg2] } });
 
@@ -66,7 +71,7 @@ describe('useChatStore', () => {
 describe('useAuthStore', () => {
   it('updates profile and user state', async () => {
     const updatedUser = { id: '1', username: 'alice', displayName: 'Alice Updated' };
-    (api.patch as any).mockResolvedValue({ data: { user: updatedUser } });
+    (api.patch as Mock).mockResolvedValue({ data: { user: updatedUser } });
 
     await useAuthStore.getState().updateProfile({ displayName: 'Alice Updated' });
 

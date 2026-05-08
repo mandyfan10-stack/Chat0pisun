@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
+import { env } from '../config/env';
 
 export class HttpError extends Error {
   statusCode: number;
@@ -28,12 +29,16 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     });
   }
 
-  console.error(error);
+  // Log unexpected errors
+  console.error('[Unhandled Error]:', {
+    message: error instanceof Error ? error.message : 'Unknown error',
+    stack: env.nodeEnv === 'development' && error instanceof Error ? error.stack : undefined,
+  });
 
   return res.status(500).json({
     error: {
       code: 'INTERNAL_SERVER_ERROR',
-      message: 'Internal server error',
+      message: env.nodeEnv === 'production' ? 'Internal server error' : (error instanceof Error ? error.message : 'Internal server error'),
     },
   });
 };
