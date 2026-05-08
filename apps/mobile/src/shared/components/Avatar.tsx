@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 import { Typography } from './Typography';
+import { API_URL } from '../../config/env';
 
 interface AvatarProps {
   uri?: string;
@@ -21,10 +22,17 @@ export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 
       .slice(0, 2);
   }, [safeName]);
 
-  if (uri) {
+  const sourceUri = useMemo(() => {
+    if (!uri) {
+      return null;
+    }
+    return uri.startsWith('http') ? uri : `${API_URL}${uri}`;
+  }, [uri]);
+
+  if (sourceUri) {
     return (
       <Image
-        source={{ uri }}
+        source={{ uri: sourceUri }}
         style={[styles.container, { width: size, height: size, borderRadius: size / 2 }]}
       />
     );

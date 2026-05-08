@@ -11,7 +11,7 @@
     "build": "tsc",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:setup": "node scripts/setup-sqlite.cjs",
+    "db:setup": "prisma migrate dev --name init",
     "db:migrate": "prisma migrate dev"
   },
   "keywords": [],
@@ -46,6 +46,7 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
     "prisma": "^5.22.0",
     "socket.io": "^4.8.3"
   }

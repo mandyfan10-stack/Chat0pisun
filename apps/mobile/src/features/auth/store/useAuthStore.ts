@@ -27,6 +27,8 @@ interface AuthState {
   logout: () => Promise<void>;
   restoreToken: () => Promise<void>;
   refresh: () => Promise<boolean>;
+  updateProfile: (input: { displayName?: string; bio?: string }) => Promise<void>;
+  uploadAvatar: (uri: string, type: string, name: string) => Promise<void>;
   clearSession: () => Promise<void>;
 }
 
@@ -156,6 +158,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       await get().clearSession();
       return false;
+    }
+  },
+
+  updateProfile: async (input) => {
+    set({ isSubmitting: true, error: null });
+
+    try {
+      const response = await apiRequest<{ user: User }>('/api/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      });
+      set({ user: response.user });
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Update failed') });
+      throw error;
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+
+  uploadAvatar: async (uri, type, name) => {
+    set({ isSubmitting: true, error: null });
+
+    try {
+      const formData = new FormData();
+      // @ts-ignore: React Native FormData needs this shape
+      formData.append('avatar', {
+        uri,
+        type,
+        name,
+      });
+
+      const response = await apiRequest<{ user: User }>('/api/users/me/avatar', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      set({ user: response.user });
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Avatar upload failed') });
+      throw error;
+    } finally {
+      set({ isSubmitting: false });
     }
   },
 

@@ -32,6 +32,10 @@ export interface Message {
 
 export interface Chat {
   id: string;
+  type: 'DIRECT' | 'GROUP';
+  name: string | null;
+  avatarUrl: string | null;
+  ownerId: string | null;
   createdAt: string;
   updatedAt: string;
   participants: Participant[];
@@ -49,6 +53,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (input: { displayName?: string; bio?: string }) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<void>;
   clearSession: () => void;
 }
 
@@ -63,9 +69,12 @@ interface ChatState {
   fetchChats: () => Promise<void>;
   fetchMessages: (chatId: string) => Promise<void>;
   startChat: (targetUserId: string) => Promise<Chat>;
+  createGroupChat: (name: string, participantUserIds: string[]) => Promise<Chat>;
   sendMessage: (chatId: string, text: string) => Promise<void>;
+  markAsRead: (chatId: string) => Promise<void>;
   upsertChat: (chat: Chat) => void;
   addMessage: (message: Message, tempId?: string) => void;
+  markMessagesAsRead: (chatId: string, userId: string, readAt: string) => void;
   resetChats: () => void;
 }
 
@@ -193,6 +202,41 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
+  updateProfile: async (input) => {
+    set({ isSubmitting: true, authError: null });
+
+    try {
+      const response = await api.patch<{ user: User }>('/users/me', input);
+      set({ user: response.data.user });
+    } catch (error) {
+      set({ authError: getErrorMessage(error, 'Update failed') });
+      throw error;
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+
+  uploadAvatar: async (file) => {
+    set({ isSubmitting: true, authError: null });
+
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await api.post<{ user: User }>('/users/me/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      set({ user: response.data.user });
+    } catch (error) {
+      set({ authError: getErrorMessage(error, 'Avatar upload failed') });
+      throw error;
+    } finally {
+      set({ isSubmitting: false });
+    }
+  },
+
   clearSession: () => {
     clearStoredTokens();
     useChatStore.getState().resetChats();
@@ -248,6 +292,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return response.data;
   },
 
+  createGroupChat: async (name, participantUserIds) => {
+    const response = await api.post<Chat>('/chats/group', { name, participantUserIds });
+    get().upsertChat(response.data);
+    set({ activeChatId: response.data.id });
+    return response.data;
+  },
+
   sendMessage: async (chatId, text) => {
     const normalizedText = text.trim();
 
@@ -258,6 +309,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const response = await api.post<Message>(`/chats/${chatId}/messages`, { text: normalizedText });
     get().addMessage(response.data);
     await get().fetchChats();
+  },
+
+  markAsRead: async (chatId) => {
+    try {
+      await api.post(`/chats/${chatId}/read`);
+      const user = useAuthStore.getState().user;
+      if (user) {
+        get().markMessagesAsRead(chatId, user.id, new Date().toISOString());
+      }
+    } catch (error) {
+      console.error('Failed to mark chat as read:', error);
+    }
   },
 
   upsertChat: (chat) =>
@@ -278,6 +341,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: {
           ...state.messages,
           [message.chatId]: [message, ...withoutDuplicates],
+        },
+      };
+    }),
+
+  markMessagesAsRead: (chatId, userId, readAt) =>
+    set((state) => {
+      const currentMessages = state.messages[chatId];
+      if (!currentMessages) {
+        return state;
+      }
+
+      const updatedMessages = currentMessages.map((msg) => {
+        if (msg.senderId !== userId && !msg.readAt) {
+          return { ...msg, readAt };
+        }
+        return msg;
+      });
+
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: updatedMessages,
         },
       };
     }),

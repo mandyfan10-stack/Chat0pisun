@@ -32,6 +32,10 @@ export interface Participant {
 
 export interface Chat {
   id: string;
+  type: 'DIRECT' | 'GROUP';
+  name: string | null;
+  avatarUrl: string | null;
+  ownerId: string | null;
   createdAt: string;
   updatedAt: string;
   participants: Participant[];

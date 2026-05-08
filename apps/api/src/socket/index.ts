@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'http';
 import { Server, type Socket } from 'socket.io';
 import { env } from '../config/env';
 import { prisma } from '../config/db';
-import { assertChatParticipant, createMessageInChat } from '../services/chats';
+import { assertChatParticipant, createMessageInChat, markMessagesAsRead } from '../services/chats';
 import type { ChatDto, MessageDto } from '../utils/dto';
 import { verifyAccessToken } from '../utils/tokens';
 
@@ -101,6 +101,20 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
         }
       },
     );
+
+    socket.on('chat:read', async (payload: { chatId?: string }) => {
+      try {
+        if (!payload.chatId) {
+          throw new Error('chatId is required');
+        }
+
+        const result = await markMessagesAsRead(payload.chatId, user.id);
+        emitChatRead(payload.chatId, user.id, result.participantUserIds, result.readAt);
+        emitChatUpdated(result.participantUserIds, result.chat);
+      } catch (error) {
+        socket.emit('message:error', { error: getErrorMessage(error) });
+      }
+    });
   });
 
   return io;
@@ -113,5 +127,16 @@ export const emitMessageCreated = (chatId: string, message: MessageDto, tempId?:
 export const emitChatUpdated = (participantUserIds: string[], chat: ChatDto) => {
   for (const userId of participantUserIds) {
     io?.to(`user:${userId}`).emit('chat:updated', chat);
+  }
+};
+
+export const emitChatRead = (
+  chatId: string,
+  userId: string,
+  participantUserIds: string[],
+  readAt: Date,
+) => {
+  for (const pUserId of participantUserIds) {
+    io?.to(`user:${pUserId}`).emit('chat:read', { chatId, userId, readAt });
   }
 };

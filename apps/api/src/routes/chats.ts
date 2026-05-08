@@ -4,10 +4,12 @@ import { asyncHandler, HttpError } from '../middleware/errorHandler';
 import {
   createMessageInChat,
   createOrGetDirectChat,
+  createGroupChat,
   listChatsForUser,
   listMessagesForChat,
+  markMessagesAsRead,
 } from '../services/chats';
-import { emitChatUpdated, emitMessageCreated } from '../socket';
+import { emitChatRead, emitChatUpdated, emitMessageCreated } from '../socket';
 
 export const chatsRouter = Router();
 
@@ -47,6 +49,23 @@ chatsRouter.post(
   }),
 );
 
+chatsRouter.post(
+  '/group',
+  asyncHandler(async (req, res) => {
+    const authUser = getAuthUser(req);
+    const { name, participantUserIds } = req.body;
+
+    if (typeof name !== 'string' || !Array.isArray(participantUserIds)) {
+      throw new HttpError(400, 'Name and participantUserIds are required', 'INVALID_INPUT');
+    }
+
+    const chat = await createGroupChat(authUser.id, name, participantUserIds);
+    emitChatUpdated(chat.participants.map((participant) => participant.userId), chat);
+
+    res.status(201).json(chat);
+  }),
+);
+
 chatsRouter.get(
   '/:chatId/messages',
   asyncHandler(async (req, res) => {
@@ -78,5 +97,18 @@ chatsRouter.post(
     emitChatUpdated(result.participantUserIds, result.chat);
 
     res.status(201).json(result.message);
+  }),
+);
+
+chatsRouter.post(
+  '/:chatId/read',
+  asyncHandler(async (req, res) => {
+    const authUser = getAuthUser(req);
+    const chatId = getChatId(req.params.chatId);
+
+    const result = await markMessagesAsRead(chatId, authUser.id);
+    emitChatRead(chatId, authUser.id, result.participantUserIds, result.readAt);
+
+    res.status(204).send();
   }),
 );

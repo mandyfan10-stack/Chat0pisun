@@ -23,9 +23,12 @@ interface ChatState {
   fetchChats: () => Promise<void>;
   fetchMessages: (chatId: string) => Promise<void>;
   startChat: (targetUserId: string) => Promise<Chat>;
+  createGroupChat: (name: string, participantUserIds: string[]) => Promise<Chat>;
   sendMessage: (chatId: string, text: string) => Promise<void>;
+  markAsRead: (chatId: string) => Promise<void>;
   upsertChat: (chat: Chat) => void;
   addMessage: (message: Message, tempId?: string) => void;
+  markMessagesAsRead: (chatId: string, userId: string, readAt: string) => void;
   reset: () => void;
 }
 
@@ -60,6 +63,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     socket.on('chat:updated', (chat: Chat) => {
       get().upsertChat(chat);
+    });
+
+    socket.on('chat:read', (payload: { chatId: string; userId: string; readAt: string }) => {
+      get().markMessagesAsRead(payload.chatId, payload.userId, payload.readAt);
     });
 
     socket.on('message:error', (payload: { error?: string }) => {
@@ -114,6 +121,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return chat;
   },
 
+  createGroupChat: async (name, participantUserIds) => {
+    const chat = await apiRequest<Chat>('/api/chats/group', {
+      method: 'POST',
+      body: JSON.stringify({ name, participantUserIds }),
+    });
+    get().upsertChat(chat);
+    return chat;
+  },
+
   sendMessage: async (chatId, text) => {
     const normalizedText = text.trim();
 
@@ -127,6 +143,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
     get().addMessage(message);
     await get().fetchChats();
+  },
+
+  markAsRead: async (chatId) => {
+    try {
+      await apiRequest(`/api/chats/${chatId}/read`, { method: 'POST' });
+      const user = useAuthStore.getState().user;
+      if (user) {
+        get().markMessagesAsRead(chatId, user.id, new Date().toISOString());
+      }
+    } catch (error) {
+      console.error('Failed to mark chat as read:', error);
+    }
   },
 
   upsertChat: (chat) =>
@@ -147,6 +175,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: {
           ...state.messages,
           [message.chatId]: [message, ...withoutDuplicates],
+        },
+      };
+    }),
+
+  markMessagesAsRead: (chatId, userId, readAt) =>
+    set((state) => {
+      const currentMessages = state.messages[chatId];
+      if (!currentMessages) {
+        return state;
+      }
+
+      const updatedMessages = currentMessages.map((msg) => {
+        if (msg.senderId !== userId && !msg.readAt) {
+          return { ...msg, readAt };
+        }
+        return msg;
+      });
+
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: updatedMessages,
         },
       };
     }),

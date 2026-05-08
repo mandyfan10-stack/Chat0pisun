@@ -20,12 +20,23 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
   const error = useChatStore(state => state.error);
   const fetchMessages = useChatStore(state => state.fetchMessages);
   const sendMessage = useChatStore(state => state.sendMessage);
+  const markAsRead = useChatStore(state => state.markAsRead);
   const joinChat = useChatStore(state => state.joinChat);
 
   useEffect(() => {
     void fetchMessages(chatId);
+    void markAsRead(chatId);
     joinChat(chatId);
-  }, [chatId, fetchMessages, joinChat]);
+  }, [chatId, fetchMessages, markAsRead, joinChat]);
+
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      const lastMessage = chatMessages[0];
+      if (lastMessage.senderId !== currentUser?.id && !lastMessage.readAt) {
+        void markAsRead(chatId);
+      }
+    }
+  }, [chatMessages, chatId, currentUser?.id, markAsRead]);
 
   useEffect(() => {
     if (chat) {
