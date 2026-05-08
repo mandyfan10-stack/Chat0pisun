@@ -20,11 +20,11 @@ describe('useChatStore mobile', () => {
   });
 
   it('upserts chats and sorts them by updatedAt', () => {
-    const chat1 = { id: '1', updatedAt: '2026-05-01T10:00:00Z', participants: [], lastMessage: null, createdAt: '' };
-    const chat2 = { id: '2', updatedAt: '2026-05-02T10:00:00Z', participants: [], lastMessage: null, createdAt: '' };
+    const chat1 = { id: '1', type: 'DIRECT', name: null, avatarUrl: null, ownerId: null, updatedAt: '2026-05-01T10:00:00Z', participants: [], lastMessage: null, createdAt: '' } as const;
+    const chat2 = { id: '2', type: 'DIRECT', name: null, avatarUrl: null, ownerId: null, updatedAt: '2026-05-02T10:00:00Z', participants: [], lastMessage: null, createdAt: '' } as const;
 
-    useChatStore.getState().upsertChat(chat1);
-    useChatStore.getState().upsertChat(chat2);
+    useChatStore.getState().upsertChat(chat1 as any);
+    useChatStore.getState().upsertChat(chat2 as any);
 
     const state = useChatStore.getState();
     expect(state.chats).toHaveLength(2);

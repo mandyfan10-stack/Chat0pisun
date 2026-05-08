@@ -7,7 +7,6 @@ import {
   Menu,
   MessageCircle,
   MoreVertical,
-  Plus,
   Search,
   Send,
   User as UserIcon,
@@ -52,7 +51,7 @@ const Avatar = ({ user, chat, size = 'md' }: { user?: User; chat?: Chat; size?: 
   const sizeClass = size === 'lg' ? 'h-14 w-14 text-lg' : size === 'sm' ? 'h-9 w-9 text-xs' : 'h-11 w-11 text-sm';
   
   const avatarUrl = user?.avatarUrl || chat?.avatarUrl;
-  const name = chat?.type === 'GROUP' ? chat.name : (user?.displayName || user?.username || 'User');
+  const name = (chat?.type === 'GROUP' ? chat.name : (user?.displayName || user?.username)) || 'User';
 
   if (avatarUrl) {
     const fullUrl = avatarUrl.startsWith('http')
@@ -241,7 +240,7 @@ export default function ChatApp() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [accessToken, activeChatId, addMessage, upsertChat, user]);
+  }, [accessToken, activeChatId, addMessage, upsertChat, user, markAsRead, markMessagesAsRead]);
 
   useEffect(() => {
     if (!activeChatId) {

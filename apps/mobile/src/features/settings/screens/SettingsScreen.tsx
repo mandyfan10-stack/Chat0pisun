@@ -74,10 +74,10 @@ export const SettingsScreen = () => {
               <Typography variant="h2" numberOfLines={1}>{user?.displayName || user?.username}</Typography>
               <Typography variant="body" color="textSecondary" numberOfLines={1}>{user?.email}</Typography>
               {user?.bio ? (
-                <Typography variant="bodySmall" color="textSecondary" style={styles.bioText}>{user.bio}</Typography>
+                <Typography variant="caption" color="textSecondary" style={styles.bioText}>{user.bio}</Typography>
               ) : null}
               <TouchableOpacity style={styles.editButton} onPress={() => setIsEditing(true)}>
-                <Typography variant="bodySmall" color="primary">Edit Profile</Typography>
+                <Typography variant="caption" color="primary">Edit Profile</Typography>
               </TouchableOpacity>
             </>
           ) : (
@@ -87,14 +87,14 @@ export const SettingsScreen = () => {
                 value={editDisplayName}
                 onChangeText={setEditDisplayName}
                 placeholder="Display Name"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={theme.colors.textMuted}
               />
               <TextInput
                 style={[styles.input, styles.bioInput]}
                 value={editBio}
                 onChangeText={setEditBio}
                 placeholder="Bio"
-                placeholderTextColor={theme.colors.textTertiary}
+                placeholderTextColor={theme.colors.textMuted}
                 multiline
               />
               <View style={styles.editActions}>

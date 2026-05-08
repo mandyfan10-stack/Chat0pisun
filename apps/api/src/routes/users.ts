@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import multer from 'multer';
 import path from 'path';
+import { env } from '../config/env';
 import { prisma } from '../config/db';
 import { getAuthUser, requireAuth } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errorHandler';
@@ -9,23 +11,36 @@ import { normalizeDisplayName, normalizeBio } from '../utils/validation';
 
 export const usersRouter = Router();
 
+const avatarRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many avatar updates. Try again in an hour.' } },
+  skip: () => env.isTest,
+});
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, path.join(__dirname, '../../uploads/avatars'));
   },
   filename: (req, file, cb) => {
     const authUser = getAuthUser(req);
-    const ext = path.extname(file.originalname);
+    // Sanitize original name to prevent any weird issues, though we generate our own
+    const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${authUser.id}-${Date.now()}${ext}`);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  limits: { 
+    fileSize: 1 * 1024 * 1024, // Reduced to 1MB
+    files: 1 
+  }, 
   fileFilter: (_req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new HttpError(400, 'Only .jpg, .png and .webp formats allowed!', 'INVALID_FILE_TYPE'));
@@ -88,6 +103,10 @@ usersRouter.patch(
     const displayName = normalizeDisplayName(req.body.displayName, user.displayName);
     const bio = normalizeBio(req.body.bio);
 
+    if (displayName === user.displayName && bio === user.bio) {
+      return res.json({ user: toSafeUserDto(user) });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: authUser.id },
       data: {
@@ -104,6 +123,7 @@ usersRouter.patch(
 usersRouter.post(
   '/me/avatar',
   requireAuth,
+  avatarRateLimit,
   upload.single('avatar'),
   asyncHandler(async (req, res) => {
     const authUser = getAuthUser(req);

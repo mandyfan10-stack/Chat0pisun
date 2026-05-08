@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, type Mock } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ChatApp from '../pages/ChatApp';
 import { useAuthStore, useChatStore } from '../store/useStore';
@@ -19,13 +19,15 @@ vi.mock('../services/api', () => ({
 
 describe('ChatApp Component', () => {
   it('renders welcome message when no chat is selected', () => {
-    (useAuthStore as any).mockImplementation((selector: any) => selector({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (useAuthStore as unknown as Mock).mockImplementation((selector: any) => selector({
       user: { username: 'alice', displayName: 'Alice' },
       accessToken: 'token',
       logout: vi.fn(),
     }));
 
-    (useChatStore as any).mockImplementation((selector: any) => selector({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (useChatStore as unknown as Mock).mockImplementation((selector: any) => selector({
       chats: [],
       activeChatId: null,
       messages: {},
