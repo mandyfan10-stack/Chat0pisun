@@ -18,11 +18,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
   const getStatusIcon = () => {
     if (!isMine) return null;
 
+    if (message.readAt) {
+      return <MaterialCommunityIcons name="check-all" size={14} color={theme.colors.primaryLight} />;
+    }
+
     switch (message.status) {
       case 'sending':
         return <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.textSecondary} />;
-      case 'read':
-        return <MaterialCommunityIcons name="check-all" size={14} color={theme.colors.primaryLight} />;
       case 'error':
         return <MaterialCommunityIcons name="alert-circle-outline" size={14} color={theme.colors.error} />;
       case 'sent':

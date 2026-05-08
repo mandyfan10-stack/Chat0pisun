@@ -52,6 +52,7 @@ export const createOrGetDirectChat = async (currentUserId: string, targetUserId:
 
   const existingChats = await prisma.chat.findMany({
     where: {
+      type: 'DIRECT',
       AND: [
         { participants: { some: { userId: currentUserId } } },
         { participants: { some: { userId: targetUserId } } },
@@ -75,8 +76,34 @@ export const createOrGetDirectChat = async (currentUserId: string, targetUserId:
 
   const chat = await prisma.chat.create({
     data: {
+      type: 'DIRECT',
       participants: {
         create: [{ userId: currentUserId }, { userId: targetUserId }],
+      },
+    },
+    include: chatInclude,
+  });
+
+  return toChatDto(chat);
+};
+
+export const createGroupChat = async (ownerId: string, name: string, participantUserIds: string[]) => {
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new HttpError(400, 'Group name is required', 'INVALID_INPUT');
+  }
+
+  // Ensure owner is included in participants
+  const uniqueParticipantIds = Array.from(new Set([ownerId, ...participantUserIds]));
+
+  const chat = await prisma.chat.create({
+    data: {
+      type: 'GROUP',
+      name: normalizedName,
+      ownerId,
+      participants: {
+        create: uniqueParticipantIds.map((userId) => ({ userId })),
       },
     },
     include: chatInclude,
@@ -186,5 +213,36 @@ export const createMessageInChat = async (chatId: string, senderId: string, text
     message: toMessageDto(message),
     chat: toChatDto(chat),
     participantUserIds,
+  };
+};
+
+export const markMessagesAsRead = async (chatId: string, userId: string) => {
+  await assertChatParticipant(chatId, userId);
+
+  const now = new Date();
+
+  await prisma.message.updateMany({
+    where: {
+      chatId,
+      senderId: { not: userId },
+      readAt: null,
+    },
+    data: {
+      readAt: now,
+    },
+  });
+
+  const [participantUserIds, chat] = await Promise.all([
+    getParticipantUserIds(chatId),
+    prisma.chat.findUniqueOrThrow({
+      where: { id: chatId },
+      include: chatInclude,
+    }),
+  ]);
+
+  return {
+    chat: toChatDto(chat),
+    participantUserIds,
+    readAt: now,
   };
 };

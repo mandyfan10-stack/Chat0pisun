@@ -11,6 +11,12 @@ import {
   signAccessToken,
 } from '../utils/tokens';
 import { safeUserSelect, toSafeUserDto } from '../utils/dto';
+import {
+  normalizeDisplayName,
+  normalizeEmail,
+  normalizeUsername,
+  validatePassword,
+} from '../utils/validation';
 
 export const authRouter = Router();
 
@@ -20,6 +26,19 @@ type RateLimitBucket = {
 };
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
+
+// Periodically clean up expired rate-limit buckets to prevent memory leaks.
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const rateLimitCleanupTimer = setInterval(() => {
+  const now = Date.now();
+
+  for (const [key, bucket] of rateLimitBuckets) {
+    if (bucket.resetAt <= now) {
+      rateLimitBuckets.delete(key);
+    }
+  }
+}, RATE_LIMIT_CLEANUP_INTERVAL_MS);
+rateLimitCleanupTimer.unref(); // Don't prevent process exit
 
 const authRateLimit: RequestHandler = (req, _res, next) => {
   if (env.isTest) {
@@ -41,64 +60,6 @@ const authRateLimit: RequestHandler = (req, _res, next) => {
 
   bucket.count += 1;
   return next();
-};
-
-const normalizeEmail = (email: unknown): string => {
-  if (typeof email !== 'string') {
-    throw new HttpError(400, 'Email is required', 'INVALID_INPUT');
-  }
-
-  const normalized = email.trim().toLowerCase();
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-    throw new HttpError(400, 'Email is invalid', 'INVALID_INPUT');
-  }
-
-  return normalized;
-};
-
-const normalizeUsername = (username: unknown): string => {
-  if (typeof username !== 'string') {
-    throw new HttpError(400, 'Username is required', 'INVALID_INPUT');
-  }
-
-  const normalized = username.trim().toLowerCase();
-
-  if (!/^[a-z0-9_]{3,30}$/.test(normalized)) {
-    throw new HttpError(
-      400,
-      'Username must be 3-30 characters and use letters, numbers, or underscores',
-      'INVALID_INPUT',
-    );
-  }
-
-  return normalized;
-};
-
-const normalizeDisplayName = (displayName: unknown, fallback: string): string => {
-  if (displayName === undefined || displayName === null || displayName === '') {
-    return fallback;
-  }
-
-  if (typeof displayName !== 'string') {
-    throw new HttpError(400, 'Display name is invalid', 'INVALID_INPUT');
-  }
-
-  const normalized = displayName.trim();
-
-  if (!normalized || normalized.length > 80) {
-    throw new HttpError(400, 'Display name must be 1-80 characters', 'INVALID_INPUT');
-  }
-
-  return normalized;
-};
-
-const validatePassword = (password: unknown): string => {
-  if (typeof password !== 'string' || password.length < 8) {
-    throw new HttpError(400, 'Password must be at least 8 characters', 'INVALID_INPUT');
-  }
-
-  return password;
 };
 
 const issueSession = async (user: { id: string; username: string }) => {

@@ -7,9 +7,11 @@ import {
   Menu,
   MessageCircle,
   MoreVertical,
+  Plus,
   Search,
   Send,
   User as UserIcon,
+  Users,
   X,
 } from 'lucide-react';
 import { api, SOCKET_URL } from '../services/api';
@@ -46,17 +48,28 @@ const getInitials = (name?: string) => {
     .toUpperCase();
 };
 
-const Avatar = ({ user, size = 'md' }: { user?: User; size?: 'sm' | 'md' | 'lg' }) => {
+const Avatar = ({ user, chat, size = 'md' }: { user?: User; chat?: Chat; size?: 'sm' | 'md' | 'lg' }) => {
   const sizeClass = size === 'lg' ? 'h-14 w-14 text-lg' : size === 'sm' ? 'h-9 w-9 text-xs' : 'h-11 w-11 text-sm';
-  const name = user?.displayName || user?.username || 'User';
+  
+  const avatarUrl = user?.avatarUrl || chat?.avatarUrl;
+  const name = chat?.type === 'GROUP' ? chat.name : (user?.displayName || user?.username || 'User');
 
-  if (user?.avatarUrl) {
-    return <img src={user.avatarUrl} alt="" className={`${sizeClass} rounded-full object-cover`} />;
+  if (avatarUrl) {
+    const fullUrl = avatarUrl.startsWith('http')
+      ? avatarUrl
+      : `${SOCKET_URL}${avatarUrl}`;
+    return <img src={fullUrl} alt="" className={`${sizeClass} rounded-full object-cover`} />;
   }
+
+  const isGroup = chat?.type === 'GROUP';
 
   return (
     <div
-      className={`${sizeClass} grid shrink-0 place-items-center rounded-full border border-white/10 bg-gradient-to-br from-[#7dd3fc] to-[#5288c1] font-semibold text-white shadow-lg shadow-black/20`}
+      className={`${sizeClass} grid shrink-0 place-items-center rounded-full border border-white/10 ${
+        isGroup 
+          ? 'bg-gradient-to-br from-indigo-400 to-indigo-600' 
+          : 'bg-gradient-to-br from-[#7dd3fc] to-[#5288c1]'
+      } font-semibold text-white shadow-lg shadow-black/20`}
     >
       {getInitials(name)}
     </div>
@@ -100,6 +113,14 @@ export default function ChatApp() {
   const sendChatMessage = useChatStore((state) => state.sendMessage);
   const upsertChat = useChatStore((state) => state.upsertChat);
   const addMessage = useChatStore((state) => state.addMessage);
+  const markAsRead = useChatStore((state) => state.markAsRead);
+  const markMessagesAsRead = useChatStore((state) => state.markMessagesAsRead);
+  const updateProfile = useAuthStore((state) => state.updateProfile);
+  const uploadAvatar = useAuthStore((state) => state.uploadAvatar);
+  const createGroupChat = useChatStore((state) => state.createGroupChat);
+  const isSubmitting = useAuthStore((state) => state.isSubmitting);
+  const authError = useAuthStore((state) => state.authError);
+
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,7 +134,14 @@ export default function ChatApp() {
     readJsonStorage<Record<string, string>>('nextgram.readChats', {}),
   );
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [editDisplayName, setEditDisplayName] = useState(user?.displayName ?? '');
+  const [editBio, setEditBio] = useState(user?.bio ?? '');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
   const activeChat = chats.find((chat) => chat.id === activeChatId) ?? null;
@@ -195,9 +223,15 @@ export default function ChatApp() {
       if (payload.message.senderId === user.id || payload.message.chatId === activeChatId) {
         setReadChatVersions((current) => ({ ...current, [payload.message.chatId]: payload.message.id }));
       }
+      if (payload.message.chatId === activeChatId && payload.message.senderId !== user.id) {
+        void markAsRead(activeChatId);
+      }
     });
     socket.on('chat:updated', (chat: Chat) => {
       upsertChat(chat);
+    });
+    socket.on('chat:read', (payload: { chatId: string; userId: string; readAt: string }) => {
+      markMessagesAsRead(payload.chatId, payload.userId, payload.readAt);
     });
     socket.on('message:error', (payload: { error?: string }) => {
       console.error(payload.error ?? 'Message socket error');
@@ -215,8 +249,9 @@ export default function ChatApp() {
     }
 
     void fetchMessages(activeChatId);
+    void markAsRead(activeChatId);
     socketRef.current?.emit('chat:join', { chatId: activeChatId });
-  }, [activeChatId, fetchMessages]);
+  }, [activeChatId, fetchMessages, markAsRead]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,9 +303,54 @@ export default function ChatApp() {
     await sendChatMessage(activeChatId, text);
   };
 
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupName.trim() || selectedUserIds.length === 0) return;
+
+    try {
+      await createGroupChat(groupName, selectedUserIds);
+      setIsCreatingGroup(false);
+      setGroupName('');
+      setSelectedUserIds([]);
+    } catch {
+      // Error handled by store
+    }
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+    );
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateProfile({ displayName: editDisplayName, bio: editBio });
+      setIsEditingProfile(false);
+    } catch {
+      // Error handled by store
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        await uploadAvatar(file);
+      } catch {
+        // Error handled by store
+      }
+    }
   };
 
   if (!user) {
@@ -288,7 +368,10 @@ export default function ChatApp() {
           <div className="mb-5 flex items-center justify-between">
             <button
               type="button"
-              onClick={() => setIsProfileMenuOpen((current) => !current)}
+              onClick={() => {
+                setIsProfileMenuOpen((current) => !current);
+                setIsEditingProfile(false);
+              }}
               className="grid h-10 w-10 place-items-center rounded-full text-slate-300 transition hover:bg-white/10 hover:text-white"
               aria-expanded={isProfileMenuOpen}
               aria-label="Open profile menu"
@@ -309,17 +392,122 @@ export default function ChatApp() {
             </button>
           </div>
 
-          <div className="mb-4 flex items-center gap-3">
-            <Avatar user={user} />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{user.displayName || user.username}</div>
-              <div className="truncate text-xs text-slate-400">@{user.username}</div>
+          {!isEditingProfile ? (
+            <div className="mb-4 flex items-center gap-3">
+              <button type="button" onClick={handleAvatarClick} className="relative group overflow-hidden rounded-full">
+                <Avatar user={user} />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <UserIcon size={16} className="text-white" />
+                </div>
+              </button>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-white">{user.displayName || user.username}</div>
+                <div className="truncate text-xs text-slate-400">@{user.username}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingGroup((curr) => !curr);
+                  setIsProfileMenuOpen(false);
+                }}
+                className={`grid h-8 w-8 place-items-center rounded-full transition ${
+                  isCreatingGroup ? 'bg-[#5288c1] text-white' : 'bg-[#5288c1]/20 text-[#7dd3fc] hover:bg-[#5288c1]/40'
+                }`}
+                aria-label="Create group"
+              >
+                <Users size={16} />
+              </button>
             </div>
-          </div>
+          ) : (
+            <form onSubmit={handleUpdateProfile} className="mb-4 space-y-3">
+              <div>
+                <label htmlFor="displayName" className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Display Name</label>
+                <input
+                  id="displayName"
+                  type="text"
+                  className="w-full h-10 rounded-xl border border-white/10 bg-[#0e141b] px-3 text-sm text-white outline-none focus:border-[#5288c1]"
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="bio" className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Bio</label>
+                <textarea
+                  id="bio"
+                  className="w-full h-20 rounded-xl border border-white/10 bg-[#0e141b] p-3 text-sm text-white outline-none focus:border-[#5288c1] resize-none"
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 h-10 rounded-xl bg-[#5288c1] text-sm font-semibold text-white hover:bg-[#6aa8ef] transition disabled:opacity-50"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProfile(false)}
+                  className="flex-1 h-10 rounded-xl border border-white/10 text-sm font-semibold text-white hover:bg-white/5 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+              {authError && <div className="text-xs text-red-400">{authError}</div>}
+            </form>
+          )}
 
-          {isProfileMenuOpen ? (
+          {isCreatingGroup && !isEditingProfile && (
+            <div className="mb-4 space-y-3 rounded-2xl border border-white/10 bg-[#121b28] p-3 shadow-xl shadow-black/20">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">New Group</span>
+                <button type="button" onClick={() => {
+                  setIsCreatingGroup(false);
+                  setSelectedUserIds([]);
+                  setGroupName('');
+                }}>
+                  <X size={14} className="text-slate-500" />
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Group Name"
+                className="h-10 w-full rounded-xl border border-white/10 bg-[#0e141b] px-3 text-sm text-white outline-none focus:border-[#5288c1]"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Selected Participants: {selectedUserIds.length}
+              </div>
+              <button
+                type="button"
+                onClick={handleCreateGroup}
+                disabled={!groupName.trim() || selectedUserIds.length === 0}
+                className="h-10 w-full rounded-xl bg-[#5288c1] text-sm font-semibold text-white hover:bg-[#6aa8ef] transition disabled:opacity-50"
+              >
+                Create Group
+              </button>
+            </div>
+          )}
+
+          {isProfileMenuOpen && !isEditingProfile ? (
             <div className="mb-4 rounded-2xl border border-white/10 bg-[#121b28] p-3 shadow-xl shadow-black/20">
-              <div className="mb-3 text-xs text-slate-400">{user.email}</div>
+              <div className="mb-3 px-3 text-xs text-slate-400">{user.email}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingProfile(true);
+                  setIsProfileMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-200 transition hover:bg-white/5"
+              >
+                <UserIcon size={16} />
+                Edit Profile
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -335,7 +523,7 @@ export default function ChatApp() {
             <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
-              placeholder="Search users"
+              placeholder={isCreatingGroup ? "Search participants" : "Search users"}
               className="h-11 w-full rounded-2xl border border-white/10 bg-[#0e141b] pl-10 pr-12 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#5b9be7] focus:ring-4 focus:ring-[#5b9be7]/10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -353,20 +541,32 @@ export default function ChatApp() {
           {searchError ? <div className="mt-2 text-xs text-red-300">{searchError}</div> : null}
           {searchResults.length > 0 ? (
             <div className="absolute z-20 mt-2 max-h-64 w-[calc(100%-2.5rem)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121b28] p-2 shadow-2xl shadow-black/40">
-              {searchResults.map((result) => (
-                <button
-                  key={result.id}
-                  type="button"
-                  className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition hover:bg-white/5"
-                  onClick={() => void handleStartChat(result.id)}
-                >
-                  <Avatar user={result} size="sm" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-white">{result.displayName}</span>
-                    <span className="block truncate text-xs text-slate-400">@{result.username}</span>
-                  </span>
-                </button>
-              ))}
+              {searchResults.map((result) => {
+                const isSelected = selectedUserIds.includes(result.id);
+                return (
+                  <button
+                    key={result.id}
+                    type="button"
+                    className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${
+                      isSelected ? 'bg-[#5288c1]/20' : 'hover:bg-white/5'
+                    }`}
+                    onClick={() => isCreatingGroup ? toggleUserSelection(result.id) : void handleStartChat(result.id)}
+                  >
+                    <Avatar user={result} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-white">{result.displayName}</span>
+                      <span className="block truncate text-xs text-slate-400">@{result.username}</span>
+                    </span>
+                    {isCreatingGroup && (
+                      <div className={`h-5 w-5 rounded-full border flex items-center justify-center transition ${
+                        isSelected ? 'bg-[#5288c1] border-[#5288c1]' : 'border-white/20'
+                      }`}>
+                        {isSelected && <CheckCheck size={12} className="text-white" />}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           ) : null}
         </div>
@@ -415,6 +615,7 @@ export default function ChatApp() {
               const otherParticipant = getOtherParticipant(chat, user.id);
               const isActive = activeChatId === chat.id;
               const isUnread = isChatUnread(chat);
+              const isGroup = chat.type === 'GROUP';
 
               return (
                 <button
@@ -425,19 +626,24 @@ export default function ChatApp() {
                     isActive ? 'bg-[#182331]' : 'hover:bg-white/[0.04]'
                   }`}
                 >
-                  <Avatar user={otherParticipant?.user} size="lg" />
+                  <Avatar user={!isGroup ? otherParticipant?.user : undefined} chat={chat} size="lg" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-3">
                       <span className="truncate text-sm font-semibold text-white">
-                        {otherParticipant?.user.displayName ?? 'Unknown chat'}
+                        {isGroup ? chat.name : (otherParticipant?.user.displayName ?? 'Unknown chat')}
                       </span>
                       <span className="shrink-0 text-[11px] text-slate-500">{formatTime(chat.updatedAt)}</span>
                     </span>
                     <span className="mt-1 block truncate text-sm text-slate-400">
+                      {isGroup && chat.lastMessage && (
+                        <span className="text-[#7dd3fc]">
+                          {chat.participants.find(p => p.userId === chat.lastMessage?.senderId)?.user.displayName || 'User'}:{' '}
+                        </span>
+                      )}
                       {chat.lastMessage?.text ?? 'No messages yet'}
                     </span>
                     <span className="mt-2 inline-flex rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                      {getChatFolder(chat)}
+                      {isGroup ? 'Group' : getChatFolder(chat)}
                     </span>
                   </span>
                   {isUnread ? (
@@ -465,12 +671,16 @@ export default function ChatApp() {
                 >
                   <Menu size={21} />
                 </button>
-                <Avatar user={activeParticipant?.user} />
+                <Avatar user={activeChat.type === 'DIRECT' ? activeParticipant?.user : undefined} chat={activeChat} />
                 <div className="min-w-0">
                   <h2 className="truncate text-base font-semibold text-white">
-                    {activeParticipant?.user.displayName ?? 'Chat'}
+                    {activeChat.type === 'GROUP' ? activeChat.name : (activeParticipant?.user.displayName ?? 'Chat')}
                   </h2>
-                  <p className="truncate text-xs text-slate-400">online recently</p>
+                  <p className="truncate text-xs text-slate-400">
+                    {activeChat.type === 'GROUP' 
+                      ? `${activeChat.participants.length} members` 
+                      : 'online recently'}
+                  </p>
                 </div>
               </div>
 
@@ -508,7 +718,9 @@ export default function ChatApp() {
                           <div className="whitespace-pre-wrap break-words text-sm leading-6">{chatMessage.text}</div>
                           <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${isMine ? 'text-blue-100' : 'text-slate-500'}`}>
                             <span>{formatTime(chatMessage.createdAt)}</span>
-                            {isMine ? <CheckCheck size={13} /> : null}
+                            {isMine ? (
+                              <CheckCheck size={13} className={chatMessage.readAt ? 'text-blue-300' : ''} />
+                            ) : null}
                           </div>
                         </div>
                       </div>

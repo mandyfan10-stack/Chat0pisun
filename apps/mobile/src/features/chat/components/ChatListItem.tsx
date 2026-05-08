@@ -17,9 +17,16 @@ interface ChatListItemProps {
 
 export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, folder, isUnread, onPress, onToggleFolder }) => {
   const currentUser = useAuthStore(state => state.user);
-  const otherParticipant =
-    chat.participants.find((participant) => participant.userId !== currentUser?.id)?.user ||
-    chat.participants[0]?.user;
+  const isGroup = chat.type === 'GROUP';
+
+  const otherParticipant = !isGroup 
+    ? (chat.participants.find((participant) => participant.userId !== currentUser?.id)?.user || chat.participants[0]?.user)
+    : null;
+
+  const displayName = isGroup ? chat.name : (otherParticipant?.displayName || 'User');
+  const lastSenderName = isGroup && chat.lastMessage
+    ? chat.participants.find(p => p.userId === chat.lastMessage?.senderId)?.user.displayName || 'User'
+    : null;
 
   const formatTime = (timestamp?: string) => {
     if (!timestamp) return '';
@@ -36,16 +43,20 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, fol
       onPress={() => onPress(chat.id)}
       activeOpacity={0.82}
       accessibilityRole="button"
-      accessibilityLabel={`Open chat with ${otherParticipant?.displayName ?? 'user'}`}
+      accessibilityLabel={`Open chat with ${displayName}`}
     >
       <View style={styles.avatarContainer}>
-        <Avatar name={otherParticipant?.displayName || 'User'} uri={otherParticipant?.avatarUrl ?? undefined} size={56} />
+        <Avatar 
+          name={displayName || 'User'} 
+          uri={(isGroup ? chat.avatarUrl : otherParticipant?.avatarUrl) ?? undefined} 
+          size={56} 
+        />
       </View>
 
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
           <Typography variant="h3" numberOfLines={1} style={styles.name}>
-            {otherParticipant?.displayName ?? 'Unknown user'}
+            {displayName}
           </Typography>
           <Typography variant="caption" color="textMuted">
             {formatTime(chat.updatedAt)}
@@ -59,6 +70,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, fol
             numberOfLines={2}
             style={styles.messageText}
           >
+            {lastSenderName ? <Typography variant="body" color="primary">{lastSenderName}: </Typography> : null}
             {chat.lastMessage?.text || 'No messages yet'}
           </Typography>
           {isUnread ? (
@@ -79,7 +91,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ chat, fol
           accessibilityLabel={`Move chat to ${folder === 'work' ? 'personal' : 'work'}`}
         >
           <Typography color="textSecondary" style={styles.folderText}>
-            {folder === 'work' ? 'Work' : 'Personal'}
+            {isGroup ? 'Group' : (folder === 'work' ? 'Work' : 'Personal')}
           </Typography>
         </TouchableOpacity>
       </View>

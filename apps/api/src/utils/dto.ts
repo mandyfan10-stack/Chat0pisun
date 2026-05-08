@@ -33,6 +33,10 @@ export interface MessageDto {
 
 export interface ChatDto {
   id: string;
+  type: 'DIRECT' | 'GROUP';
+  name: string | null;
+  avatarUrl: string | null;
+  ownerId: string | null;
   createdAt: Date;
   updatedAt: Date;
   participants: ParticipantDto[];
@@ -102,6 +106,10 @@ export const toMessageDto = (message: Message): MessageDto => ({
 
 export const toChatDto = (chat: ChatWithRelations): ChatDto => ({
   id: chat.id,
+  type: chat.type,
+  name: chat.name,
+  avatarUrl: chat.avatarUrl,
+  ownerId: chat.ownerId,
   createdAt: chat.createdAt,
   updatedAt: chat.updatedAt,
   participants: chat.participants.map(toParticipantDto),
