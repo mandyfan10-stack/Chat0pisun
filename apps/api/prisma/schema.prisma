@@ -76,7 +76,7 @@ model Message {
   senderId  String
   text      String
   createdAt DateTime  @default(now())
-  updatedAt DateTime?
+  updatedAt DateTime? @updatedAt
   readAt    DateTime?
   chat      Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
   sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)

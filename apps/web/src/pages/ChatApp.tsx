@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api, SOCKET_URL } from '../services/api';
 import { type Chat, type Message, type Participant, type User, useAuthStore, useChatStore } from '../store/useStore';
+import { LinkifiedText } from '../components/LinkifiedText';
 
 interface MessageCreatedPayload {
   tempId?: string;
@@ -714,7 +715,7 @@ export default function ChatApp() {
                               : 'rounded-bl-md border border-white/5 bg-[#182331] text-slate-100'
                           }`}
                         >
-                          <div className="whitespace-pre-wrap break-words text-sm leading-6">{chatMessage.text}</div>
+                          <LinkifiedText text={chatMessage.text} isMine={isMine} />
                           <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${isMine ? 'text-blue-100' : 'text-slate-500'}`}>
                             <span>{formatTime(chatMessage.createdAt)}</span>
                             {isMine ? (

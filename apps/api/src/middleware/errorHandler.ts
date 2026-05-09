@@ -1,14 +1,17 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
 import { env } from '../config/env';
+import { logger } from '../utils/logger';
 
 export class HttpError extends Error {
   statusCode: number;
   code: string;
+  details?: unknown;
 
-  constructor(statusCode: number, message: string, code = 'ERROR') {
+  constructor(statusCode: number, message: string, code = 'ERROR', details?: unknown) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -25,15 +28,13 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
       error: {
         code: error.code,
         message: error.message,
+        details: error.details,
       },
     });
   }
 
   // Log unexpected errors
-  console.error('[Unhandled Error]:', {
-    message: error instanceof Error ? error.message : 'Unknown error',
-    stack: env.nodeEnv === 'development' && error instanceof Error ? error.stack : undefined,
-  });
+  logger.error(error, '[Unhandled Error]');
 
   return res.status(500).json({
     error: {

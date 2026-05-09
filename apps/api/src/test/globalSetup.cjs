@@ -20,7 +20,7 @@ module.exports = async () => {
 
   const prisma = new PrismaClient();
   const migrationSql = fs.readFileSync(
-    path.join(prismaDir, 'migrations', '20260428193000_init_messaging', 'migration.sql'),
+    path.join(prismaDir, 'migrations', '20260509103347_init', 'migration.sql'),
     'utf8',
   );
   const statements = migrationSql
