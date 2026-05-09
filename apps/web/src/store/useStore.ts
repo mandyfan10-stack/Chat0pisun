@@ -201,6 +201,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         refreshToken: null,
         isHydrating: false,
         authError: null,
+        usersPresence: {},
       });
     }
   },
@@ -253,6 +254,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: null,
       refreshToken: null,
       isHydrating: false,
+      usersPresence: {},
     });
   },
 }));
