@@ -49,12 +49,14 @@ interface AuthState {
   isHydrating: boolean;
   isSubmitting: boolean;
   authError: string | null;
+  usersPresence: Record<string, 'online' | 'offline'>;
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (input: { displayName?: string; bio?: string }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<void>;
+  updateUserPresence: (userId: string, status: 'online' | 'offline') => void;
   clearSession: () => void;
 }
 
@@ -117,6 +119,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isHydrating: true,
   isSubmitting: false,
   authError: null,
+  usersPresence: {},
 
   hydrate: async () => {
     const tokens = getStoredTokens();
@@ -236,6 +239,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ isSubmitting: false });
     }
   },
+
+  updateUserPresence: (userId, status) =>
+    set((state) => ({
+      usersPresence: { ...state.usersPresence, [userId]: status },
+    })),
 
   clearSession: () => {
     clearStoredTokens();
