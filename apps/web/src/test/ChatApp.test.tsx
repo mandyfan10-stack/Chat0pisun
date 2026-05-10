@@ -4,6 +4,13 @@ import ChatApp from '../pages/ChatApp';
 import { useAuthStore, useChatStore } from '../store/useStore';
 import { MemoryRouter } from 'react-router-dom';
 
+const createZustandMock = (initialState: any) => {
+  const mock: any = vi.fn((selector) => selector(initialState));
+  mock.getState = vi.fn(() => initialState);
+  mock.setState = vi.fn();
+  return mock;
+};
+
 vi.mock('../store/useStore', () => ({
   useAuthStore: vi.fn(),
   useChatStore: vi.fn(),
@@ -19,22 +26,32 @@ vi.mock('../services/api', () => ({
 
 describe('ChatApp Component', () => {
   it('renders welcome message when no chat is selected', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (useAuthStore as unknown as Mock).mockImplementation((selector: any) => selector({
+    const authState = {
       user: { username: 'alice', displayName: 'Alice' },
       accessToken: 'token',
       logout: vi.fn(),
-    }));
+      updateUserPresence: vi.fn(),
+    };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (useChatStore as unknown as Mock).mockImplementation((selector: any) => selector({
+    const chatState = {
       chats: [],
       activeChatId: null,
       messages: {},
       isLoadingChats: false,
       fetchChats: vi.fn(),
       setActiveChatId: vi.fn(),
-    }));
+      fetchMessages: vi.fn(),
+      markAsRead: vi.fn(),
+      addMessage: vi.fn(),
+      upsertChat: vi.fn(),
+      markMessagesAsRead: vi.fn(),
+    };
+
+    (useAuthStore as unknown as Mock).mockImplementation((selector: any) => selector(authState));
+    (useAuthStore as any).getState = () => authState;
+
+    (useChatStore as unknown as Mock).mockImplementation((selector: any) => selector(chatState));
+    (useChatStore as any).getState = () => chatState;
 
     render(
       <MemoryRouter>
