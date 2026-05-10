@@ -8,6 +8,7 @@ import { getAuthUser, requireAuth } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errorHandler';
 import { toPublicUserDto, toSafeUserDto, safeUserSelect } from '../utils/dto';
 import { normalizeDisplayName, normalizeBio } from '../utils/validation';
+import { uploadFile } from '../services/storage';
 
 export const usersRouter = Router();
 
@@ -20,20 +21,8 @@ const avatarRateLimit = rateLimit({
   skip: () => env.isTest,
 });
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/avatars'));
-  },
-  filename: (req, file, cb) => {
-    const authUser = getAuthUser(req);
-    // Sanitize original name to prevent any weird issues, though we generate our own
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${authUser.id}-${Date.now()}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { 
     fileSize: 1 * 1024 * 1024, // Reduced to 1MB
     files: 1 
@@ -132,7 +121,10 @@ usersRouter.post(
       throw new HttpError(400, 'No file uploaded', 'INVALID_INPUT');
     }
 
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const ext = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+    const filename = `${authUser.id}-${Date.now()}${ext}`;
+    
+    const avatarUrl = await uploadFile(req.file, 'avatars', filename);
 
     const updatedUser = await prisma.user.update({
       where: { id: authUser.id },

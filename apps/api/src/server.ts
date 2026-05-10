@@ -3,28 +3,29 @@ import { app } from './app';
 import { env } from './config/env';
 import { configureSocketServer } from './socket';
 import { prisma } from './config/db';
+import { logger } from './utils/logger';
 
 const httpServer = createServer(app);
 
 configureSocketServer(httpServer);
 
 const server = httpServer.listen(env.port, () => {
-  console.log(`Server is running on port ${env.port}`);
+  logger.info(`Server is running on port ${env.port}`);
 });
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log('Shutting down gracefully...');
+  logger.info('Shutting down gracefully...');
   server.close(async () => {
-    console.log('HTTP server closed.');
+    logger.info('HTTP server closed.');
     await prisma.$disconnect();
-    console.log('Database connection closed.');
+    logger.info('Database connection closed.');
     process.exit(0);
   });
 
   // Force shutdown after 10s
   setTimeout(() => {
-    console.error('Could not close connections in time, forcefully shutting down');
+    logger.error('Could not close connections in time, forcefully shutting down');
     process.exit(1);
   }, 10000);
 };

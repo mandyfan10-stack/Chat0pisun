@@ -78,4 +78,26 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().user?.displayName).toBe('Alice Updated');
     expect(api.patch).toHaveBeenCalledWith('/users/me', { displayName: 'Alice Updated' });
   });
+
+  it('updates user presence', () => {
+    const { updateUserPresence } = useAuthStore.getState();
+    
+    updateUserPresence('user-1', 'online');
+    expect(useAuthStore.getState().usersPresence['user-1']).toBe('online');
+    
+    updateUserPresence('user-1', 'offline');
+    expect(useAuthStore.getState().usersPresence['user-1']).toBe('offline');
+  });
+
+  it('clears usersPresence on logout', async () => {
+    useAuthStore.setState({ usersPresence: { 'user-1': 'online' } });
+    await useAuthStore.getState().logout();
+    expect(useAuthStore.getState().usersPresence).toEqual({});
+  });
+
+  it('clears usersPresence on clearSession', () => {
+    useAuthStore.setState({ usersPresence: { 'user-1': 'online' } });
+    useAuthStore.getState().clearSession();
+    expect(useAuthStore.getState().usersPresence).toEqual({});
+  });
 });

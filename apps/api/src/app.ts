@@ -1,16 +1,43 @@
 import cors from 'cors';
 import express from 'express';
-import mongoSanitize from 'express-mongo-sanitize';
 import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
 import path from 'path';
 import { rateLimit } from 'express-rate-limit';
+import { pinoHttp } from 'pino-http';
 import { env } from './config/env';
-import { errorHandler } from './middleware/errorHandler';
+import { logger } from './utils/logger';
+import { errorHandler, asyncHandler } from './middleware/errorHandler';
+import { register, httpRequestDuration } from './utils/metrics';
 import { authRouter } from './routes/auth';
 import { chatsRouter } from './routes/chats';
 import { usersRouter } from './routes/users';
 
 export const app = express();
+
+app.use(pinoHttp({ logger }));
+
+// Metrics middleware
+app.use(mongoSanitize());
+
+app.use((req, res, next) => {
+  const start = process.hrtime();
+  res.on('finish', () => {
+    const duration = process.hrtime(start);
+    const durationInSeconds = duration[0] + duration[1] / 1e9;
+    const route = req.route?.path || req.path;
+    httpRequestDuration.observe(
+      { method: req.method, route, status_code: res.statusCode },
+      durationInSeconds,
+    );
+  });
+  next();
+});
+
+app.get('/metrics', asyncHandler(async (_req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+}));
 
 app.set('trust proxy', 1);
 
@@ -18,7 +45,6 @@ app.set('trust proxy', 1);
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
-app.use(mongoSanitize());
 app.use(cors({ 
   origin: env.allowedOrigins,
   credentials: true 
