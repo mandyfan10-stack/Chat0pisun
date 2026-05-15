@@ -13,20 +13,20 @@ enum ChatType {
 }
 
 model User {
-  id           String            @id @default(uuid())
-  email        String            @unique
-  username     String            @unique
+  id           String   @id @default(uuid())
+  email        String   @unique @db.VarChar(254)
+  username     String   @unique @db.VarChar(30)
   passwordHash String
-  displayName  String
-  avatarUrl    String?
-  bio          String?
-  lastSeen     DateTime          @default(now())
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  displayName  String   @db.VarChar(80)
+  avatarUrl    String?  @db.VarChar(512)
+  bio          String?  @db.VarChar(500)
+  lastSeen     DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   sessions     Session[]
   chats        ChatParticipant[]
   messages     Message[]
-  ownedGroups  Chat[]            @relation("GroupOwner")
+  ownedGroups  Chat[]   @relation("GroupOwner")
 }
 
 model Session {
@@ -43,16 +43,16 @@ model Session {
 }
 
 model Chat {
-  id           String            @id @default(uuid())
-  type         ChatType          @default(DIRECT)
-  name         String?
-  avatarUrl    String?
+  id           String           @id @default(uuid())
+  type         ChatType         @default(DIRECT)
+  name         String?          @db.VarChar(100)
+  avatarUrl    String?          @db.VarChar(512)
   ownerId      String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
   participants ChatParticipant[]
   messages     Message[]
-  owner        User?             @relation("GroupOwner", fields: [ownerId], references: [id])
+  owner        User?            @relation("GroupOwner", fields: [ownerId], references: [id])
 
   @@index([updatedAt])
 }
@@ -74,7 +74,8 @@ model Message {
   id        String    @id @default(uuid())
   chatId    String
   senderId  String
-  text      String
+  // Max 4000 chars to prevent oversized payloads in DB and Redis cache
+  text      String    @db.VarChar(4000)
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
   readAt    DateTime?
