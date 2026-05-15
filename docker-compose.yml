@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16-alpine
@@ -47,11 +45,17 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-messenger}?schema=public
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-production-key}
+      # JWT_SECRET must be set explicitly — no insecure default.
+      # Generate with: openssl rand -base64 32
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET env variable is required. Generate with: openssl rand -base64 32}
       PORT: 4000
       NODE_ENV: production
-      ALLOWED_ORIGINS: "http://localhost:5173"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
       S3_ENABLED: ${S3_ENABLED:-false}
+    volumes:
+      # Persist local uploads when S3 is disabled
+      - uploads_data:/app/apps/api/uploads
 
 volumes:
   postgres_data:
+  uploads_data:
