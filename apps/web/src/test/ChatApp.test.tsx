@@ -4,13 +4,6 @@ import ChatApp from '../pages/ChatApp';
 import { useAuthStore, useChatStore } from '../store/useStore';
 import { MemoryRouter } from 'react-router-dom';
 
-const createZustandMock = (initialState: any) => {
-  const mock: any = vi.fn((selector) => selector(initialState));
-  mock.getState = vi.fn(() => initialState);
-  mock.setState = vi.fn();
-  return mock;
-};
-
 vi.mock('../store/useStore', () => ({
   useAuthStore: vi.fn(),
   useChatStore: vi.fn(),
@@ -47,19 +40,25 @@ describe('ChatApp Component', () => {
       markMessagesAsRead: vi.fn(),
     };
 
-    (useAuthStore as unknown as Mock).mockImplementation((selector: any) => selector(authState));
-    (useAuthStore as any).getState = () => authState;
+    (useAuthStore as unknown as Mock).mockImplementation(
+      (selector: (state: typeof authState) => unknown) => selector(authState),
+    );
+    (useAuthStore as unknown as { getState: () => typeof authState }).getState = () => authState;
 
-    (useChatStore as unknown as Mock).mockImplementation((selector: any) => selector(chatState));
-    (useChatStore as any).getState = () => chatState;
+    (useChatStore as unknown as Mock).mockImplementation(
+      (selector: (state: typeof chatState) => unknown) => selector(chatState),
+    );
+    (useChatStore as unknown as { getState: () => typeof chatState }).getState = () => chatState;
 
     render(
       <MemoryRouter>
         <ChatApp />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Welcome to Nextgram')).toBeDefined();
-    expect(screen.getByText('Select a chat or find a user to begin a private conversation.')).toBeDefined();
+    expect(
+      screen.getByText('Select a chat or find a user to begin a private conversation.'),
+    ).toBeDefined();
   });
 });
