@@ -12,7 +12,8 @@ import { api } from '../../services/api';
 import { type Chat, type User, useAuthStore, useChatStore } from '../../store/useStore';
 import { Avatar } from './Avatar';
 import { SidebarHeader } from './SidebarHeader';
-import { ChatTabs, type ChatFilter } from './ChatTabs';
+import { ChatTabs } from './ChatTabs';
+import { type ChatFilter } from './chatTabsTypes';
 import { ChatList } from './ChatList';
 
 type ChatFolder = 'personal' | 'work';
@@ -45,7 +46,7 @@ export const Sidebar = () => {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('all');
-    const [chatFolders, _setChatFolders] = useState<Record<string, ChatFolder>>(() =>
+        const [chatFolders] = useState<Record<string, ChatFolder>>(() =>
     readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {}),
   );
   const [readChatVersions, setReadChatVersions] = useState<Record<string, string>>(() =>
