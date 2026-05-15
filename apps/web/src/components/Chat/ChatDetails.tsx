@@ -6,7 +6,7 @@ import { getOtherParticipant } from '../Sidebar/utils';
 interface ChatDetailsProps {
   onClose: () => void;
   onSetFolder: (chatId: string, folder: 'personal' | 'work') => void;
-  getChatFolder: (chat: any) => 'personal' | 'work';
+    getChatFolder: (chat: { id: string }) => 'personal' | 'work';
 }
 
 export const ChatDetails = ({ onClose, onSetFolder, getChatFolder }: ChatDetailsProps) => {
