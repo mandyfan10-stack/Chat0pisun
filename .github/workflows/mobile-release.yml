@@ -22,8 +22,9 @@ jobs:
       - name: 🏗 Setup Expo
         uses: expo/expo-github-action@v8
         with:
-          expo-version: latest
-          eas-version: latest
+          # Pin to specific versions to avoid unexpected breakage on major EAS CLI updates
+          expo-version: 0.22.6
+          eas-version: 14.4.0
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: 📦 Install dependencies
