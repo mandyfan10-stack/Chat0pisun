@@ -16,8 +16,6 @@ import { usersRouter } from './routes/users';
 export const app = express();
 
 app.use(pinoHttp({ logger }));
-
-// Metrics middleware
 app.use(mongoSanitize());
 
 app.use((req, res, next) => {
@@ -41,7 +39,6 @@ app.get('/metrics', asyncHandler(async (_req, res) => {
 
 app.set('trust proxy', 1);
 
-// Security Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
@@ -49,18 +46,18 @@ app.use(cors({
   origin: env.allowedOrigins,
   credentials: true 
 }));
-app.use(express.json({ limit: '10kb' })); // Reduced limit for JSON payloads
+app.use(express.json({ limit: '10kb' }));
 
-// Rate Limiting
+// Global rate limit: 200 requests per 15 min per IP
+// This prevents brute-force and DDoS while allowing normal API usage
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 200,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests' } },
   skip: () => env.isTest,
 });
-
 app.use('/api', globalLimiter);
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
@@ -75,5 +72,4 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/chats', chatsRouter);
-
 app.use(errorHandler);
