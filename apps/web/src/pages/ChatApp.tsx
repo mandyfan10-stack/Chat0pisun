@@ -13,8 +13,8 @@ export default function ChatApp() {
   const fetchMessages = useChatStore((state) => state.fetchMessages);
   const markAsRead = useChatStore((state) => state.markAsRead);
 
-  const socketRef = useSocket(accessToken);
-  useSocketSync(socketRef);
+  const socket = useSocket(accessToken);
+  useSocketSync(socket, activeChatId);
 
   useEffect(() => {
     if (user) {
@@ -29,8 +29,8 @@ export default function ChatApp() {
 
     void fetchMessages(activeChatId);
     void markAsRead(activeChatId);
-    socketRef.current?.emit('chat:join', { chatId: activeChatId });
-  }, [activeChatId, fetchMessages, markAsRead, socketRef]);
+    socket?.emit('chat:join', { chatId: activeChatId });
+  }, [activeChatId, fetchMessages, markAsRead, socket]);
 
   if (!user) {
     return null;
