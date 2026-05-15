@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, type Mock } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import ChatApp from '../pages/ChatApp';
 import { useAuthStore, useChatStore } from '../store/useStore';
 import { MemoryRouter } from 'react-router-dom';
@@ -15,6 +15,15 @@ vi.mock('../services/api', () => ({
     post: vi.fn(),
   },
   SOCKET_URL: 'http://localhost:4000',
+}));
+
+vi.mock('socket.io-client', () => ({
+  io: vi.fn(() => ({
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    disconnect: vi.fn(),
+  })),
 }));
 
 describe('ChatApp Component', () => {
@@ -50,15 +59,15 @@ describe('ChatApp Component', () => {
     );
     (useChatStore as unknown as { getState: () => typeof chatState }).getState = () => chatState;
 
-    render(
+    const { getByText } = render(
       <MemoryRouter>
         <ChatApp />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Welcome to Nextgram')).toBeDefined();
+    expect(getByText('Welcome to Nextgram')).toBeDefined();
     expect(
-      screen.getByText('Select a chat or find a user to begin a private conversation.'),
+      getByText('Select a chat or find a user to begin a private conversation.'),
     ).toBeDefined();
   });
 });
