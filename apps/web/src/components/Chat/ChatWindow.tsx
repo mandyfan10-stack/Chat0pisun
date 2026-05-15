@@ -42,7 +42,7 @@ export const ChatWindow = () => {
     };
   }, []);
 
-  const getChatFolder = useCallback((chat: any) => chatFolders[chat.id] ?? 'personal', [chatFolders]);
+    const getChatFolder = useCallback((chat: { id: string }) => chatFolders[chat.id] ?? 'personal', [chatFolders]);
 
   const handleSetChatFolder = (chatId: string, folder: ChatFolder) => {
     const current = readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {});
