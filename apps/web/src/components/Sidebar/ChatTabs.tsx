@@ -50,6 +50,3 @@ export const ChatTabs = ({ activeFilter, setActiveFilter, getChatFolder, isChatU
     </div>
   );
 };
-
-export type { ChatFilter } from './chatTabsTypes';
-export { chatFilterLabels } from './chatTabsTypes';
