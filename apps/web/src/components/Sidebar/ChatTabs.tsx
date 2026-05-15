@@ -1,14 +1,6 @@
 import { useMemo } from 'react';
 import { useChatStore, type Chat } from '../../store/useStore';
-
-export type ChatFilter = 'all' | 'new' | 'personal' | 'work';
-
-export const chatFilterLabels: Record<ChatFilter, string> = {
-  all: 'All',
-  new: 'New',
-  personal: 'Personal',
-  work: 'Work',
-};
+import { type ChatFilter, chatFilterLabels } from './chatTabsTypes';
 
 interface ChatTabsProps {
   activeFilter: ChatFilter;
