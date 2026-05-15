@@ -2,7 +2,7 @@ import { User as UserIcon } from 'lucide-react';
 import { useAuthStore, useChatStore, type Chat } from '../../store/useStore';
 import { Avatar } from './Avatar';
 import { formatTime, getOtherParticipant } from './utils';
-import { type ChatFilter, chatFilterLabels } from './ChatTabs';
+import { type ChatFilter, chatFilterLabels } from './chatTabsTypes';
 
 interface ChatListProps {
   filteredChats: Chat[];
