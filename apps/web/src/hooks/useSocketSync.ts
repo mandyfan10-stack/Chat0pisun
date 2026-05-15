@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { useAuthStore, useChatStore } from '../store/useStore';
+import { type Message, useAuthStore, useChatStore } from '../store/useStore';
 
 export function useSocketSync(
   socket: Socket | null,
@@ -15,7 +15,7 @@ export function useSocketSync(
     const { updateUserPresence } = useAuthStore.getState();
 
     const handleMessage = (payload: {
-      message: { chatId: string; senderId: string; id: string };
+      message: Message;
       tempId?: string;
     }) => {
       addMessage(payload.message, payload.tempId);
@@ -32,7 +32,7 @@ export function useSocketSync(
     socket.on('chat:read', (payload: { chatId: string; userId: string; readAt: string }) => {
       markMessagesAsRead(payload.chatId, payload.userId, payload.readAt);
     });
-    socket.on('presence:update', (payload: { userId: string; status: string }) => {
+    socket.on('presence:update', (payload: { userId: string; status: 'online' | 'offline' }) => {
       updateUserPresence(payload.userId, payload.status);
     });
 
