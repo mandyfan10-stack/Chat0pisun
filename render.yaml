@@ -12,7 +12,7 @@ services:
       - key: PORT
         value: 4000
       - key: DATABASE_URL
-        sync: false # Set this in Render Dashboard (MongoDB Atlas URL)
+        sync: false # Set this in Render Dashboard (PostgreSQL connection string)
       - key: REDIS_URL
         fromService:
           type: redis
@@ -21,7 +21,13 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: "*" # Update this with the Web URL after first deploy
+        # IMPORTANT: after first deploy set this to the exact URL of messenger-web
+        # e.g. https://messenger-web.onrender.com
+        # Do NOT leave as "*" in production
+        fromService:
+          type: static
+          name: messenger-web
+          property: host
 
   # Web Frontend (Static Site)
   - type: static
