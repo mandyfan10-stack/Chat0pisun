@@ -1,24 +1,27 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { SOCKET_URL } from '../services/api';
 
-export function useSocket(accessToken: string | null) {
-  const socketRef = useRef<Socket | null>(null);
+export function useSocket(accessToken: string | null): Socket | null {
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setSocket(null);
+      return;
+    }
 
-    const socket = io(SOCKET_URL, {
+    const newSocket = io(SOCKET_URL, {
       auth: { token: accessToken },
     });
 
-    socketRef.current = socket;
+    setSocket(newSocket);
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      newSocket.disconnect();
+      setSocket(null);
     };
   }, [accessToken]);
 
-  return socketRef;
+  return socket;
 }
