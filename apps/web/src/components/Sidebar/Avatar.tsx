@@ -1,16 +1,6 @@
 import { SOCKET_URL } from '../../services/api';
 import { type Chat, type User } from '../../store/useStore';
-
-export const getInitials = (name?: string) => {
-  const safeName = name?.trim() || 'User';
-
-  return safeName
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-};
+import { getInitials } from './avatarUtils';
 
 export const Avatar = ({ user, chat, size = 'md' }: { user?: User; chat?: Chat; size?: 'sm' | 'md' | 'lg' }) => {
   const sizeClass = size === 'lg' ? 'h-14 w-14 text-lg' : size === 'sm' ? 'h-9 w-9 text-xs' : 'h-11 w-11 text-sm';
