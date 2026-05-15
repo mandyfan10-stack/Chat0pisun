@@ -1,15 +1,14 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 import { useAuthStore, useChatStore } from '../store/useStore';
 
 export function useSocketSync(
-  socketRef: RefObject<Socket | null>,
+  socket: Socket | null,
   activeChatId: string | null,
 ) {
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    const socket = socketRef.current;
     if (!socket || !user) return;
 
     const { addMessage, upsertChat, markMessagesAsRead, markAsRead } = useChatStore.getState();
@@ -43,5 +42,5 @@ export function useSocketSync(
       socket.off('chat:read');
       socket.off('presence:update');
     };
-  }, [socketRef, user, activeChatId]);
+  }, [socket, user, activeChatId]);
 }
