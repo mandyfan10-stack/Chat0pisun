@@ -45,7 +45,7 @@ export const Sidebar = () => {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('all');
-  const [chatFolders, setChatFolders] = useState<Record<string, ChatFolder>>(() =>
+    const [chatFolders, _setChatFolders] = useState<Record<string, ChatFolder>>(() =>
     readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {}),
   );
   const [readChatVersions, setReadChatVersions] = useState<Record<string, string>>(() =>
