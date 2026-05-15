@@ -23,7 +23,7 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text, isMine }) =>
               className={`underline break-all ${
                 isMine ? 'text-blue-100 hover:text-white' : 'text-blue-400 hover:text-blue-300'
               }`}
-              onClick={(e) => {
+                        onClick={() => {
                 // Future enhancement: show a "You are leaving Nextgram" modal
                 // For now, standard safe link behavior
               }}
