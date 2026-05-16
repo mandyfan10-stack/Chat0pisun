@@ -1,14 +1,16 @@
-const fs = require('fs');
-const path = require('path');
-
 module.exports = async () => {
-  const prismaDir = path.resolve(__dirname, '../../prisma');
+  const dbUrl = process.env.DATABASE_URL ?? '';
+  const isPostgres = dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://');
 
-  for (const fileName of ['test.db', 'test.db-journal']) {
-    const filePath = path.join(prismaDir, fileName);
+  // Only clean up SQLite files; PostgreSQL is managed externally
+  if (!isPostgres) {
+    const fs = require('fs');
+    const path = require('path');
+    const prismaDir = path.resolve(__dirname, '../../prisma');
 
-    if (fs.existsSync(filePath)) {
-      fs.rmSync(filePath, { force: true });
+    for (const name of ['test.db', 'test.db-journal']) {
+      const filePath = path.join(prismaDir, name);
+      if (fs.existsSync(filePath)) fs.rmSync(filePath, { force: true });
     }
   }
 };

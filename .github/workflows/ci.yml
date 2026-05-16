@@ -64,13 +64,20 @@ jobs:
       - name: Typecheck (all workspaces)
         run: npm run typecheck --workspaces --if-present
 
-      - name: Test
-        run: npm run test
+      - name: Test (API)
+        run: npm run test --workspace=apps/api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/messenger_test?schema=public
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci-jwt-secret-with-enough-length
           NODE_ENV: test
+
+      - name: Test (Web)
+        run: npm run test --workspace=apps/web
+
+      # Mobile tests require a device/emulator — run locally or in a dedicated mobile CI job
+      # - name: Test (Mobile)
+      #   run: npm run test --workspace=apps/mobile
 
       - name: Build
         run: npm run build
