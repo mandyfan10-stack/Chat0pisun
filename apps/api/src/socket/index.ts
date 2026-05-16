@@ -22,7 +22,7 @@ type AuthenticatedSocket = Socket & {
 
 let io: Server | null = null;
 
-const USER_CACHE_TTL = 300; // 5 minutes
+const USER_CACHE_TTL = 300;
 
 const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : 'Unexpected socket error';
@@ -32,8 +32,18 @@ const requireSocketUser = (socket: AuthenticatedSocket) => {
   if (!socket.data.user) {
     throw new Error('Socket is not authenticated');
   }
-
   return socket.data.user;
+};
+
+// Redis-backed sliding-window rate limiter for socket events.
+// Returns true when the limit is exceeded.
+const isSocketRateLimited = async (userId: string, event: string, limit: number, windowSec: number): Promise<boolean> => {
+  const key = `rl:socket:${userId}:${event}`;
+  const count = await redis.incr(key);
+  if (count === 1) {
+    await redis.expire(key, windowSec);
+  }
+  return count > limit;
 };
 
 export const configureSocketServer = (httpServer: HttpServer): Server => {
@@ -44,7 +54,6 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
     },
   });
 
-  // Scale Socket.io with Redis adapter
   const pubClient = redis.duplicate();
   const subClient = redis.duplicate();
   io.adapter(createAdapter(pubClient, subClient));
@@ -59,7 +68,7 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
 
       const tokenUser = verifyAccessToken(token);
       const cacheKey = `user:${tokenUser.userId}`;
-      
+
       const cachedUser = await redis.get(cacheKey);
       if (cachedUser) {
         socket.data.user = JSON.parse(cachedUser);
@@ -88,31 +97,27 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
     activeSocketsGauge.inc();
     const user = requireSocketUser(socket);
     socket.join(`user:${user.id}`);
-    
-    // Mark user as online in Redis Presence
-    markUserOnline(user.id);
 
-    // Broadcast user online status change
+    markUserOnline(user.id).catch((err) => logger.error(err, 'Failed to mark user online'));
+
     io?.emit('presence:update', { userId: user.id, status: 'online' });
 
     socket.on('disconnect', async () => {
       activeSocketsGauge.dec();
-      // Check if user has other active connections on this or other instances
       const sockets = await io?.in(`user:${user.id}`).fetchSockets();
       if (!sockets || sockets.length === 0) {
         await markUserOffline(user.id);
         io?.emit('presence:update', { userId: user.id, status: 'offline' });
-        
-        // Update lastSeen in DB eventually (background update)
+
         prisma.user.update({
           where: { id: user.id },
-          data: { lastSeen: new Date() }
-        }).catch(err => logger.error(err, 'Failed to update lastSeen in background'));
+          data: { lastSeen: new Date() },
+        }).catch((err) => logger.error(err, 'Failed to update lastSeen in background'));
       }
     });
 
     socket.on('heartbeat', () => {
-      markUserOnline(user.id);
+      markUserOnline(user.id).catch((err) => logger.error(err, 'Heartbeat failed'));
     });
 
     socket.on('chat:join', async (payload: { chatId?: string }, ack?: (response: unknown) => void) => {
@@ -120,7 +125,6 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
         if (!payload.chatId) {
           throw new Error('chatId is required');
         }
-
         await assertChatParticipant(payload.chatId, user.id);
         socket.join(`chat:${payload.chatId}`);
         ack?.({ ok: true });
@@ -137,6 +141,15 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
         try {
           if (!payload.chatId || typeof payload.text !== 'string') {
             throw new Error('chatId and text are required');
+          }
+
+          // 60 messages per 60 seconds per user — matches REST messageLimiter
+          if (await isSocketRateLimited(user.id, 'message:send', 60, 60)) {
+            socket.emit('message:error', {
+              tempId: payload.tempId,
+              error: 'Too many messages. Slow down.',
+            });
+            return;
           }
 
           const result = await createMessageInChat(payload.chatId, user.id, payload.text);
@@ -156,7 +169,6 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
         if (!payload.chatId) {
           throw new Error('chatId is required');
         }
-
         const result = await markMessagesAsRead(payload.chatId, user.id);
         emitChatRead(payload.chatId, user.id, result.participantUserIds, result.readAt);
         emitChatUpdated(result.participantUserIds, result.chat);

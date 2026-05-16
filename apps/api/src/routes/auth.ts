@@ -38,29 +38,34 @@ const authRateLimit = rateLimit({
   skip: () => env.isTest,
 });
 
-const SESSION_CACHE_TTL = 86400; // 24 hours (or match refresh token TTL)
+const SESSION_CACHE_TTL = 86400;
+
+interface SessionCacheEntry {
+  id: string;
+  userId: string;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+
+const cacheSession = (refreshTokenHash: string, entry: SessionCacheEntry) =>
+  redis.set(`session:${refreshTokenHash}`, JSON.stringify(entry), 'EX', SESSION_CACHE_TTL);
 
 const issueSession = async (user: { id: string; username: string }) => {
   const refreshToken = createRefreshToken();
   const refreshTokenHash = hashRefreshToken(refreshToken);
   const expiresAt = refreshTokenExpiresAt();
 
+  // Do NOT include user — avoid caching passwordHash in Redis
   const session = await prisma.session.create({
-    data: {
-      userId: user.id,
-      refreshTokenHash,
-      expiresAt,
-    },
-    include: { user: true },
+    data: { userId: user.id, refreshTokenHash, expiresAt },
   });
 
-  // Cache session in Redis
-  await redis.set(
-    `session:${refreshTokenHash}`,
-    JSON.stringify(session),
-    'EX',
-    SESSION_CACHE_TTL,
-  );
+  await cacheSession(refreshTokenHash, {
+    id: session.id,
+    userId: session.userId,
+    expiresAt: session.expiresAt.toISOString(),
+    revokedAt: null,
+  });
 
   return {
     accessToken: signAccessToken(user),
@@ -74,7 +79,7 @@ authRouter.post(
   '/register',
   asyncHandler(async (req, res) => {
     const validated = registerSchema.safeParse(req.body);
-    
+
     if (!validated.success) {
       throw new HttpError(400, 'Invalid input data', 'INVALID_INPUT', validated.error.flatten().fieldErrors);
     }
@@ -119,7 +124,7 @@ authRouter.post(
   '/login',
   asyncHandler(async (req, res) => {
     const validated = loginSchema.safeParse(req.body);
-    
+
     if (!validated.success) {
       throw new HttpError(400, 'Invalid input data', 'INVALID_INPUT', validated.error.flatten().fieldErrors);
     }
@@ -152,17 +157,25 @@ authRouter.post(
 
     const refreshTokenHash = hashRefreshToken(req.body.refreshToken);
     const cacheKey = `session:${refreshTokenHash}`;
-    
-    let sessionData = await redis.get(cacheKey);
-    let session;
+
+    const sessionData = await redis.get(cacheKey);
+    let session: SessionCacheEntry | null = null;
 
     if (sessionData) {
-      session = JSON.parse(sessionData);
+      session = JSON.parse(sessionData) as SessionCacheEntry;
     } else {
-      session = await prisma.session.findUnique({
+      const dbSession = await prisma.session.findUnique({
         where: { refreshTokenHash },
-        include: { user: true },
+        select: { id: true, userId: true, expiresAt: true, revokedAt: true },
       });
+      if (dbSession) {
+        session = {
+          id: dbSession.id,
+          userId: dbSession.userId,
+          expiresAt: dbSession.expiresAt.toISOString(),
+          revokedAt: dbSession.revokedAt?.toISOString() ?? null,
+        };
+      }
     }
 
     if (!session || session.revokedAt || new Date(session.expiresAt) <= new Date()) {
@@ -173,23 +186,20 @@ authRouter.post(
     const nextRefreshTokenHash = hashRefreshToken(nextRefreshToken);
     const nextExpiresAt = refreshTokenExpiresAt();
 
+    // Fetch user separately — never store passwordHash in Redis
     const updatedSession = await prisma.session.update({
       where: { id: session.id },
-      data: {
-        refreshTokenHash: nextRefreshTokenHash,
-        expiresAt: nextExpiresAt,
-      },
+      data: { refreshTokenHash: nextRefreshTokenHash, expiresAt: nextExpiresAt },
       include: { user: true },
     });
 
-    // Invalidate old session cache and set new one
     await redis.del(cacheKey);
-    await redis.set(
-      `session:${nextRefreshTokenHash}`,
-      JSON.stringify(updatedSession),
-      'EX',
-      SESSION_CACHE_TTL,
-    );
+    await cacheSession(nextRefreshTokenHash, {
+      id: updatedSession.id,
+      userId: updatedSession.userId,
+      expiresAt: updatedSession.expiresAt.toISOString(),
+      revokedAt: null,
+    });
 
     res.json({
       accessToken: signAccessToken(updatedSession.user),
@@ -207,7 +217,7 @@ authRouter.post(
     }
 
     const refreshTokenHash = hashRefreshToken(req.body.refreshToken);
-    
+
     await prisma.session.updateMany({
       where: {
         refreshTokenHash,
@@ -218,7 +228,6 @@ authRouter.post(
       },
     });
 
-    // Invalidate session cache
     await redis.del(`session:${refreshTokenHash}`);
 
     res.status(204).send();

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
+import { z } from 'zod';
 import { env } from '../config/env';
 import { getAuthUser, requireAuth } from '../middleware/auth';
 import { asyncHandler, HttpError } from '../middleware/errorHandler';
@@ -31,11 +32,19 @@ const messageLimiter = rateLimit({
   skip: () => env.isTest,
 });
 
+const directChatSchema = z.object({
+  targetUserId: z.string().uuid(),
+});
+
+const groupChatSchema = z.object({
+  name: z.string().min(1).max(100).trim(),
+  participantUserIds: z.array(z.string().uuid()).min(1).max(99),
+});
+
 const getChatId = (value: string | string[] | undefined): string => {
   if (typeof value !== 'string') {
     throw new HttpError(400, 'Chat id is required', 'INVALID_CHAT_ID');
   }
-
   return value;
 };
 
@@ -44,7 +53,6 @@ chatsRouter.get(
   asyncHandler(async (req, res) => {
     const authUser = getAuthUser(req);
     const chats = await listChatsForUser(authUser.id);
-
     res.json(chats);
   }),
 );
@@ -55,12 +63,13 @@ chatsRouter.post(
   asyncHandler(async (req, res) => {
     const authUser = getAuthUser(req);
 
-    if (typeof req.body.targetUserId !== 'string') {
-      throw new HttpError(400, 'Target user id is required', 'INVALID_INPUT');
+    const validated = directChatSchema.safeParse(req.body);
+    if (!validated.success) {
+      throw new HttpError(400, 'targetUserId must be a valid UUID', 'INVALID_INPUT', validated.error.flatten().fieldErrors);
     }
 
-    const chat = await createOrGetDirectChat(authUser.id, req.body.targetUserId);
-    emitChatUpdated(chat.participants.map((participant) => participant.userId), chat);
+    const chat = await createOrGetDirectChat(authUser.id, validated.data.targetUserId);
+    emitChatUpdated(chat.participants.map((p) => p.userId), chat);
 
     res.status(201).json(chat);
   }),
@@ -71,14 +80,15 @@ chatsRouter.post(
   chatCreationLimiter,
   asyncHandler(async (req, res) => {
     const authUser = getAuthUser(req);
-    const { name, participantUserIds } = req.body;
 
-    if (typeof name !== 'string' || !Array.isArray(participantUserIds)) {
-      throw new HttpError(400, 'Name and participantUserIds are required', 'INVALID_INPUT');
+    const validated = groupChatSchema.safeParse(req.body);
+    if (!validated.success) {
+      throw new HttpError(400, 'Invalid group chat data', 'INVALID_INPUT', validated.error.flatten().fieldErrors);
     }
 
+    const { name, participantUserIds } = validated.data;
     const chat = await createGroupChat(authUser.id, name, participantUserIds);
-    emitChatUpdated(chat.participants.map((participant) => participant.userId), chat);
+    emitChatUpdated(chat.participants.map((p) => p.userId), chat);
 
     res.status(201).json(chat);
   }),

@@ -1,7 +1,6 @@
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
-import mongoSanitize from 'express-mongo-sanitize';
 import path from 'path';
 import { rateLimit } from 'express-rate-limit';
 import { pinoHttp } from 'pino-http';
@@ -16,7 +15,6 @@ import { usersRouter } from './routes/users';
 export const app = express();
 
 app.use(pinoHttp({ logger }));
-app.use(mongoSanitize());
 
 app.use((req, res, next) => {
   const start = process.hrtime();
@@ -32,7 +30,21 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/metrics', asyncHandler(async (_req, res) => {
+// /metrics is internal-only: require a bearer token from METRICS_TOKEN env var.
+// If METRICS_TOKEN is unset, the endpoint is disabled entirely.
+app.get('/metrics', (req, res, next) => {
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (!metricsToken) {
+    res.status(404).send();
+    return;
+  }
+  const auth = req.header('authorization');
+  if (auth !== `Bearer ${metricsToken}`) {
+    res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
+    return;
+  }
+  next();
+}, asyncHandler(async (_req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
 }));
@@ -42,16 +54,14 @@ app.set('trust proxy', 1);
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
-app.use(cors({ 
+app.use(cors({
   origin: env.allowedOrigins,
-  credentials: true 
+  credentials: true,
 }));
 app.use(express.json({ limit: '10kb' }));
 
-// Global rate limit: 200 requests per 15 min per IP
-// This prevents brute-force and DDoS while allowing normal API usage
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   limit: 200,
   standardHeaders: 'draft-7',
   legacyHeaders: false,

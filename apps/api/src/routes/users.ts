@@ -63,8 +63,8 @@ usersRouter.get(
       where: {
         id: { not: authUser.id },
         OR: [
-          { username: { contains: query } },
-          { displayName: { contains: query } },
+          { username: { contains: query, mode: 'insensitive' } },
+          { displayName: { contains: query, mode: 'insensitive' } },
         ],
       },
       select: publicUserSelect,
