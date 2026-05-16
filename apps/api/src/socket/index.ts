@@ -122,6 +122,14 @@ export const configureSocketServer = (httpServer: HttpServer): Server => {
 
     socket.on('chat:join', async (payload: { chatId?: string }, ack?: (response: unknown) => void) => {
       try {
+        // 20 join attempts per 60 seconds per user
+        if (await isSocketRateLimited(user.id, 'chat:join', 20, 60)) {
+          socket.emit('message:error', { error: 'Too many join requests. Slow down.' });
+          ack?.({ ok: false, error: 'Too many join requests.' });
+          return;
+        }
+      } catch { /* rate limit check non-fatal */ }
+      try {
         if (!payload.chatId) {
           throw new Error('chatId is required');
         }

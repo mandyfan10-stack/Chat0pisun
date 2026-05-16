@@ -58,11 +58,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/messenger_test?schema=public
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint (ESLint — all workspaces)
+        run: npm run lint --workspaces --if-present
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Typecheck (all workspaces)
+        run: npm run typecheck --workspaces --if-present
 
       - name: Test
         run: npm run test
