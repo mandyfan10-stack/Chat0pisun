@@ -43,7 +43,7 @@ export const getOnlineUserIds = async (): Promise<string[]> => {
 
   if (expiredIds.length > 0) {
     // Await cleanup so the set stays bounded; errors are non-fatal
-    await redis.srem(PRESENCE_KEY, ...expiredIds).catch((err) =>
+    await redis.srem(PRESENCE_KEY, ...expiredIds).catch((err: unknown) =>
       logger.error(err, 'Failed to clean up expired presence entries'),
     );
   }
