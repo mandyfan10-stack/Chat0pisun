@@ -18,14 +18,14 @@ import { safeUserSelect, toSafeUserDto } from '../utils/dto';
 export const authRouter = Router();
 
 const registerSchema = z.object({
-  email: z.string().email().toLowerCase(),
-  username: z.string().min(3).max(30).regex(/^[a-z0-9_]+$/).toLowerCase(),
+  email: z.string().toLowerCase().email(),
+  username: z.string().min(3).max(30).toLowerCase().regex(/^[a-z0-9_]+$/),
   displayName: z.string().min(1).max(80).optional(),
   password: z.string().min(8).max(128),
 });
 
 const loginSchema = z.object({
-  email: z.string().email().toLowerCase(),
+  email: z.string().toLowerCase().email(),
   password: z.string(),
 });
 
