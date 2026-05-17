@@ -44,7 +44,7 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
         chat.participants.find(participant => participant.userId !== currentUser?.id)?.user ||
         chat.participants[0]?.user;
       navigation.setOptions({
-        title: chat.type === 'GROUP' ? chat.name : (otherParticipant?.displayName || 'Chat'),
+        title: chat.type === 'GROUP' ? (chat.name ?? 'Group') : (otherParticipant?.displayName ?? 'Chat'),
       });
     }
   }, [chat, currentUser?.id, navigation]);

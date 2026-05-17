@@ -9,7 +9,6 @@ import {
   User as UserIcon,
   Plus,
   CheckCheck,
-  X,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { type Chat, type User, useAuthStore, useChatStore } from '../../store/useStore';
@@ -21,7 +20,6 @@ import { ContactsPanel } from '../Rail/ContactsPanel';
 import { GroupsPanel } from '../Rail/GroupsPanel';
 import { CallsPanel } from '../Rail/CallsPanel';
 import { SettingsPanel } from '../Rail/SettingsPanel';
-import { formatTime } from './utils';
 
 type ChatFolder = 'personal' | 'work';
 type RailView = 'chats' | 'contacts' | 'groups' | 'calls' | 'settings';
@@ -48,7 +46,6 @@ export const Sidebar = ({ onSelectChat, railView, onRailChange }: SidebarProps) 
   const logout = useAuthStore((state) => state.logout);
   const usersPresence = useAuthStore((state) => state.usersPresence);
   const chats = useChatStore((state) => state.chats);
-  const activeChatId = useChatStore((state) => state.activeChatId);
   const setActiveChatId = useChatStore((state) => state.setActiveChatId);
   const startChat = useChatStore((state) => state.startChat);
   const createGroupChat = useChatStore((state) => state.createGroupChat);

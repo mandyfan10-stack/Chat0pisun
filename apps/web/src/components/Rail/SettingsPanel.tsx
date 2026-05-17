@@ -43,7 +43,8 @@ export const SettingsPanel = ({ user, onLogout }: SettingsPanelProps) => {
 
   const handleTheme = (theme: string) => {
     setCurrentTheme(theme);
-    document.documentElement.dataset.theme = theme === 'espresso' ? '' : theme;
+    // eslint-disable-next-line react-hooks/immutability -- intentional DOM side-effect for live theme switching
+    document.documentElement.setAttribute('data-theme', theme === 'espresso' ? '' : theme);
     localStorage.setItem('c0p.theme', theme);
   };
 

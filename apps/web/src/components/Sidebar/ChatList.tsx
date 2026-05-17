@@ -16,7 +16,7 @@ interface ChatListProps {
 export const ChatList = ({
   filteredChats,
   isChatUnread,
-  getChatFolder,
+  getChatFolder: _getChatFolder,
   activeFilter,
   handleSelectChat,
 }: ChatListProps) => {
