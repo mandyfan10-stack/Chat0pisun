@@ -1,11 +1,11 @@
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { ChatListItem } from '../components/ChatListItem';
 import { Typography } from '../../../shared/components/Typography';
-import { theme } from '../../../shared/theme';
+import { colors, spacing, borderRadius } from '../../../shared/theme';
 import type { Chat } from '../types';
 import type { ChatListScreenProps } from '../../../navigation/types';
 
@@ -13,10 +13,10 @@ type ChatFilter = 'all' | 'new' | 'personal' | 'work';
 type ChatFolder = 'personal' | 'work';
 
 const chatFilterLabels: Record<ChatFilter, string> = {
-  all: 'All',
-  new: 'New',
-  personal: 'Personal',
-  work: 'Work',
+  all: 'все',
+  new: 'новые',
+  personal: 'личные',
+  work: 'работа',
 };
 
 const getChatVersion = (chat: Chat) => chat.lastMessage?.id ?? chat.updatedAt;
@@ -36,10 +36,7 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
   }, [fetchChats]);
 
   useEffect(() => {
-    if (!currentUser) {
-      return;
-    }
-
+    if (!currentUser) return;
     void Promise.all([
       AsyncStorage.getItem(`nextgram.chatFolders.${currentUser.id}`),
       AsyncStorage.getItem(`nextgram.readChats.${currentUser.id}`),
@@ -66,34 +63,28 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
 
   const getChatFolder = useCallback((chat: Chat) => chatFolders[chat.id] ?? 'personal', [chatFolders]);
   const isChatUnread = useCallback(
-    (chat: Chat) => Boolean(
-      currentUser &&
-      chat.lastMessage &&
-      chat.lastMessage.senderId !== currentUser.id &&
-      readChatVersions[chat.id] !== getChatVersion(chat),
-    ),
+    (chat: Chat) =>
+      Boolean(
+        currentUser &&
+          chat.lastMessage &&
+          chat.lastMessage.senderId !== currentUser.id &&
+          readChatVersions[chat.id] !== getChatVersion(chat),
+      ),
     [currentUser, readChatVersions],
   );
   const markChatAsRead = useCallback((chat: Chat) => {
     setReadChatVersions((current) => ({ ...current, [chat.id]: getChatVersion(chat) }));
   }, []);
+
   const filteredChats = useMemo(() => {
     return chats.filter((chat) => {
-      if (activeFilter === 'new') {
-        return isChatUnread(chat);
-      }
-
-      if (activeFilter === 'personal') {
-        return getChatFolder(chat) === 'personal';
-      }
-
-      if (activeFilter === 'work') {
-        return getChatFolder(chat) === 'work';
-      }
-
+      if (activeFilter === 'new') return isChatUnread(chat);
+      if (activeFilter === 'personal') return getChatFolder(chat) === 'personal';
+      if (activeFilter === 'work') return getChatFolder(chat) === 'work';
       return true;
     });
   }, [activeFilter, chats, getChatFolder, isChatUnread]);
+
   const chatTabs = useMemo(
     () =>
       (Object.keys(chatFilterLabels) as ChatFilter[]).map((filter) => ({
@@ -103,24 +94,21 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
           filter === 'all'
             ? chats.length
             : chats.filter((chat) => {
-                if (filter === 'new') {
-                  return isChatUnread(chat);
-                }
-
+                if (filter === 'new') return isChatUnread(chat);
                 return getChatFolder(chat) === filter;
               }).length,
       })),
     [chats, getChatFolder, isChatUnread],
   );
 
-  const handlePress = useCallback((chatId: string) => {
-    const chat = chats.find((candidate) => candidate.id === chatId);
-    if (chat) {
-      markChatAsRead(chat);
-    }
-
-    navigation.navigate('ChatRoom', { chatId });
-  }, [chats, markChatAsRead, navigation]);
+  const handlePress = useCallback(
+    (chatId: string) => {
+      const chat = chats.find((candidate) => candidate.id === chatId);
+      if (chat) markChatAsRead(chat);
+      navigation.navigate('ChatRoom', { chatId });
+    },
+    [chats, markChatAsRead, navigation],
+  );
 
   const handleToggleFolder = useCallback((chatId: string) => {
     setChatFolders((current) => ({
@@ -129,20 +117,23 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
     }));
   }, []);
 
-  const renderItem = useCallback(({ item }: { item: Chat }) => (
-    <ChatListItem
-      chat={item}
-      folder={getChatFolder(item)}
-      isUnread={isChatUnread(item)}
-      onPress={handlePress}
-      onToggleFolder={handleToggleFolder}
-    />
-  ), [getChatFolder, handlePress, handleToggleFolder, isChatUnread]);
+  const renderItem = useCallback(
+    ({ item }: { item: Chat }) => (
+      <ChatListItem
+        chat={item}
+        folder={getChatFolder(item)}
+        isUnread={isChatUnread(item)}
+        onPress={handlePress}
+        onToggleFolder={handleToggleFolder}
+      />
+    ),
+    [getChatFolder, handlePress, handleToggleFolder, isChatUnread],
+  );
 
   if (isLoadingChats) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -158,18 +149,16 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
   if (chats.length === 0) {
     return (
       <View style={styles.center}>
-        <View style={styles.emptyCard}>
-          <Typography variant="h3" align="center">No chats yet</Typography>
-          <Typography color="textSecondary" align="center" style={styles.emptyText}>
-            Search for a user to start a conversation.
-          </Typography>
-        </View>
+        <Text style={styles.emptyGlyph}>◐</Text>
+        <Text style={styles.emptyTitle}>нет чатов</Text>
+        <Text style={styles.emptySub}>найдите пользователя чтобы начать</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Tabs */}
       <View style={styles.tabs}>
         {chatTabs.map(({ filter, label, count }) => (
           <TouchableOpacity
@@ -180,27 +169,17 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
             accessibilityLabel={`${label} chats`}
             accessibilityState={{ selected: activeFilter === filter }}
           >
-            <Typography color={activeFilter === filter ? 'white' : 'textSecondary'} style={styles.tabText}>
+            <Text style={[styles.tabText, activeFilter === filter && styles.tabTextActive]}>
               {label}
               {count > 0 ? ` ${count}` : ''}
-            </Typography>
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
+
       {filteredChats.length === 0 ? (
         <View style={styles.center}>
-          <View style={styles.emptyCard}>
-            <Typography variant="h3" align="center">
-              No {chatFilterLabels[activeFilter].toLowerCase()} chats
-            </Typography>
-            <Typography color="textSecondary" align="center" style={styles.emptyText}>
-              {activeFilter === 'work'
-                ? 'Use the Personal/Work chip on a chat to move it into Work.'
-                : activeFilter === 'new'
-                  ? 'Unread incoming messages will appear here.'
-                  : 'Try another folder or start a new chat.'}
-            </Typography>
-          </View>
+          <Text style={styles.emptyTitle}>нет {chatFilterLabels[activeFilter]} чатов</Text>
         </View>
       ) : (
         <FlatList
@@ -218,49 +197,60 @@ export const ChatListScreen = ({ navigation }: ChatListScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.canvas,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
+    padding: spacing.lg,
+    backgroundColor: colors.canvas,
+  },
+  emptyGlyph: {
+    fontSize: 48,
+    color: colors.accent,
+    opacity: 0.6,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontFamily: 'serif',
+    fontSize: 22,
+    fontStyle: 'italic',
+    color: colors.ink2,
+    marginBottom: 8,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: colors.ink3,
+    fontFamily: 'monospace',
+    letterSpacing: 0.5,
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: spacing.xl,
   },
   tabs: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.backgroundSecondary,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border,
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.panel,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.rule,
   },
   tab: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: theme.borderRadius.full,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   tabActive: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.panel2,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    color: colors.ink3,
+    fontFamily: 'monospace',
   },
-  emptyCard: {
-    width: '100%',
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  emptyText: {
-    marginTop: theme.spacing.sm,
-    lineHeight: 21,
+  tabTextActive: {
+    color: colors.ink,
   },
 });

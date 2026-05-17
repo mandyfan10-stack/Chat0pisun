@@ -1,20 +1,23 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  CheckCheck,
   Search,
-  User as UserIcon,
+  MessageSquare,
   Users,
+  Phone,
+  Settings,
+  User as UserIcon,
+  Plus,
+  CheckCheck,
   X,
-  LogOut,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { type Chat, type User, useAuthStore, useChatStore } from '../../store/useStore';
 import { Avatar } from './Avatar';
-import { SidebarHeader } from './SidebarHeader';
 import { ChatTabs } from './ChatTabs';
 import { type ChatFilter } from './chatTabsTypes';
 import { ChatList } from './ChatList';
+import { formatTime } from './utils';
 
 type ChatFolder = 'personal' | 'work';
 
@@ -28,7 +31,12 @@ const readJsonStorage = <T,>(key: string, fallback: T): T => {
 
 const getChatVersion = (chat: Chat) => chat.lastMessage?.id ?? chat.updatedAt;
 
-export const Sidebar = () => {
+interface SidebarProps {
+  onSelectChat?: () => void;
+  onBack?: () => void;
+}
+
+export const Sidebar = ({ onSelectChat }: SidebarProps) => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const chats = useChatStore((state) => state.chats);
@@ -46,24 +54,20 @@ export const Sidebar = () => {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('all');
-        const [chatFolders] = useState<Record<string, ChatFolder>>(() =>
+  const [chatFolders] = useState<Record<string, ChatFolder>>(() =>
     readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {}),
   );
   const [readChatVersions, setReadChatVersions] = useState<Record<string, string>>(() =>
     readJsonStorage<Record<string, string>>('nextgram.readChats', {}),
   );
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState(user?.displayName ?? '');
   const [editBio, setEditBio] = useState(user?.bio ?? '');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    localStorage.setItem('nextgram.chatFolders', JSON.stringify(chatFolders));
-  }, [chatFolders]);
+  const [railActive, setRailActive] = useState('chats');
 
   useEffect(() => {
     localStorage.setItem('nextgram.readChats', JSON.stringify(readChatVersions));
@@ -71,7 +75,13 @@ export const Sidebar = () => {
 
   const getChatFolder = useCallback((chat: Chat) => chatFolders[chat.id] ?? 'personal', [chatFolders]);
   const isChatUnread = useCallback(
-    (chat: Chat) => Boolean(user && chat.lastMessage && chat.lastMessage.senderId !== user.id && readChatVersions[chat.id] !== getChatVersion(chat)),
+    (chat: Chat) =>
+      Boolean(
+        user &&
+          chat.lastMessage &&
+          chat.lastMessage.senderId !== user.id &&
+          readChatVersions[chat.id] !== getChatVersion(chat),
+      ),
     [readChatVersions, user],
   );
 
@@ -82,17 +92,13 @@ export const Sidebar = () => {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalizedQuery = searchQuery.trim();
-
     if (normalizedQuery.length < 2) {
       setSearchResults([]);
       setSearchError('Enter at least 2 characters');
       return;
     }
-
     try {
-      const response = await api.get<User[]>('/users/search', {
-        params: { q: normalizedQuery },
-      });
+      const response = await api.get<User[]>('/users/search', { params: { q: normalizedQuery } });
       setSearchResults(response.data);
       setSearchError(null);
     } catch {
@@ -106,11 +112,13 @@ export const Sidebar = () => {
     setSearchResults([]);
     setActiveChatId(chat.id);
     markChatAsRead(chat);
+    onSelectChat?.();
   };
 
   const handleSelectChat = (chat: Chat) => {
     setActiveChatId(chat.id);
     markChatAsRead(chat);
+    onSelectChat?.();
   };
 
   const handleLogout = async () => {
@@ -128,9 +136,7 @@ export const Sidebar = () => {
     }
   };
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleAvatarClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -146,7 +152,6 @@ export const Sidebar = () => {
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!groupName.trim() || selectedUserIds.length === 0) return;
-
     try {
       await createGroupChat(groupName, selectedUserIds);
       setIsCreatingGroup(false);
@@ -165,233 +170,247 @@ export const Sidebar = () => {
 
   const filteredChats = useMemo(() => {
     return chats.filter((chat) => {
-      if (activeFilter === 'new') {
-        return isChatUnread(chat);
-      }
-
-      if (activeFilter === 'personal') {
-        return getChatFolder(chat) === 'personal';
-      }
-
-      if (activeFilter === 'work') {
-        return getChatFolder(chat) === 'work';
-      }
-
+      if (activeFilter === 'new') return isChatUnread(chat);
+      if (activeFilter === 'personal') return getChatFolder(chat) === 'personal';
+      if (activeFilter === 'work') return getChatFolder(chat) === 'work';
       return true;
     });
   }, [activeFilter, chats, getChatFolder, isChatUnread]);
 
+  const totalUnread = chats.filter(isChatUnread).length;
+
   if (!user) return null;
 
   return (
-    <aside
-      className={`${
-        activeChatId ? 'hidden lg:flex' : 'flex'
-      } w-full shrink-0 flex-col border-r border-white/10 bg-[#101a25]/95 lg:w-[380px]`}
-    >
-      <div className="relative border-b border-white/10 px-5 pb-4 pt-5">
-        <SidebarHeader
-          onMenuClick={() => {
-            setIsProfileMenuOpen((current) => !current);
-            setIsEditingProfile(false);
-          }}
-          onLogout={handleLogout}
-          isProfileMenuOpen={isProfileMenuOpen}
-        />
+    <>
+      {/* Rail — 72px left nav bar */}
+      <nav className="rail">
+        <button className="rail-mark" onClick={handleLogout} title="выйти">
+          <span>◐</span>
+        </button>
 
-        {!isEditingProfile ? (
-          <div className="mb-4 flex items-center gap-3">
-            <button type="button" onClick={handleAvatarClick} className="relative group overflow-hidden rounded-full">
-              <Avatar user={user} />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                <UserIcon size={16} className="text-white" />
-              </div>
-            </button>
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-white">{user.displayName || user.username}</div>
-              <div className="truncate text-xs text-slate-400">@{user.username}</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setIsCreatingGroup((curr) => !curr);
-                setIsProfileMenuOpen(false);
-              }}
-              className={`grid h-8 w-8 place-items-center rounded-full transition ${
-                isCreatingGroup ? 'bg-[#5288c1] text-white' : 'bg-[#5288c1]/20 text-[#7dd3fc] hover:bg-[#5288c1]/40'
-              }`}
-              aria-label="Create group"
-            >
-              <Users size={16} />
-            </button>
+        <div className="rail-stack">
+          <button
+            className={`rail-btn${railActive === 'chats' ? ' on' : ''}`}
+            onClick={() => setRailActive('chats')}
+          >
+            <span className="rail-ico">
+              <MessageSquare size={20} strokeWidth={1.6} />
+            </span>
+            <span className="rail-lbl">чаты</span>
+            {totalUnread > 0 && <span className="rail-badge">{totalUnread}</span>}
+          </button>
+          <button
+            className={`rail-btn${railActive === 'contacts' ? ' on' : ''}`}
+            onClick={() => setRailActive('contacts')}
+          >
+            <span className="rail-ico">
+              <UserIcon size={20} strokeWidth={1.5} />
+            </span>
+            <span className="rail-lbl">контакты</span>
+          </button>
+          <button
+            className={`rail-btn${railActive === 'groups' ? ' on' : ''}`}
+            onClick={() => setRailActive('groups')}
+          >
+            <span className="rail-ico">
+              <Users size={20} strokeWidth={1.5} />
+            </span>
+            <span className="rail-lbl">группы</span>
+          </button>
+          <button
+            className={`rail-btn${railActive === 'calls' ? ' on' : ''}`}
+            onClick={() => setRailActive('calls')}
+          >
+            <span className="rail-ico">
+              <Phone size={20} strokeWidth={1.5} />
+            </span>
+            <span className="rail-lbl">звонки</span>
+          </button>
+          <button
+            className={`rail-btn${railActive === 'settings' ? ' on' : ''}`}
+            onClick={() => setRailActive('settings')}
+          >
+            <span className="rail-ico">
+              <Settings size={20} strokeWidth={1.5} />
+            </span>
+            <span className="rail-lbl">настройки</span>
+          </button>
+        </div>
+
+        <div className="rail-me" onClick={handleAvatarClick} title="сменить аватар">
+          <Avatar user={user} size="sm" />
+          <span className="odot on" style={{ width: 9, height: 9, position: 'absolute', bottom: -2, right: -2 }} />
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+        </div>
+      </nav>
+
+      {/* Sidebar panel */}
+      <aside className="sidebar">
+        <header className="sb-head">
+          <div className="sb-title">
+            <span className="sb-title-h">Эфир</span>
+            <span className="sb-title-meta mono">
+              {chats.length} активных · {chats.length} эфиров
+            </span>
           </div>
-        ) : (
-          <form onSubmit={handleUpdateProfile} className="mb-4 space-y-3">
-            <div>
-              <label htmlFor="displayName" className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Display Name</label>
+          <button
+            className="iconbtn"
+            onClick={() => setIsCreatingGroup((c) => !c)}
+            title="Новая группа"
+          >
+            <Plus size={18} strokeWidth={1.6} />
+          </button>
+        </header>
+
+        {/* Profile editing */}
+        {isEditingProfile && (
+          <form onSubmit={handleUpdateProfile} style={{ padding: '0 14px 14px', display: 'grid', gap: 10 }}>
+            <div className="fld">
+              <span className="fld-lbl">Display Name</span>
               <input
-                id="displayName"
                 type="text"
-                className="w-full h-10 rounded-xl border border-white/10 bg-[#0e141b] px-3 text-sm text-white outline-none focus:border-[#5288c1]"
                 value={editDisplayName}
                 onChange={(e) => setEditDisplayName(e.target.value)}
               />
             </div>
-            <div>
-              <label htmlFor="bio" className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Bio</label>
-              <textarea
-                id="bio"
-                className="w-full h-20 rounded-xl border border-white/10 bg-[#0e141b] p-3 text-sm text-white outline-none focus:border-[#5288c1] resize-none"
+            <div className="fld">
+              <span className="fld-lbl">Bio</span>
+              <input
+                type="text"
                 value={editBio}
                 onChange={(e) => setEditBio(e.target.value)}
-                placeholder="Tell us about yourself..."
               />
             </div>
-            <div className="flex gap-2">
+            <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 h-10 rounded-xl bg-[#5288c1] text-sm font-semibold text-white hover:bg-[#6aa8ef] transition disabled:opacity-50"
+                className="auth-cta"
+                style={{ flex: 1, marginTop: 0, padding: '10px 14px', fontSize: 13 }}
               >
-                Save
+                <span>Сохранить</span>
               </button>
               <button
                 type="button"
+                className="iconbtn"
                 onClick={() => setIsEditingProfile(false)}
-                className="flex-1 h-10 rounded-xl border border-white/10 text-sm font-semibold text-white hover:bg-white/5 transition"
               >
-                Cancel
+                <X size={18} />
               </button>
             </div>
-            {authError && <div className="text-xs text-red-400">{authError}</div>}
+            {authError && <div className="auth-error">{authError}</div>}
           </form>
         )}
 
-        {isCreatingGroup && !isEditingProfile && (
-          <div className="mb-4 space-y-3 rounded-2xl border border-white/10 bg-[#121b28] p-3 shadow-xl shadow-black/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">New Group</span>
-              <button type="button" onClick={() => {
-                setIsCreatingGroup(false);
-                setSelectedUserIds([]);
-                setGroupName('');
-              }}>
-                <X size={14} className="text-slate-500" />
-              </button>
+        {/* Group creation */}
+        {isCreatingGroup && (
+          <form onSubmit={handleCreateGroup} style={{ padding: '0 14px 14px', display: 'grid', gap: 10 }}>
+            <div className="fld">
+              <span className="fld-lbl">Название группы</span>
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Проект-0"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Group Name"
-              className="h-10 w-full rounded-xl border border-white/10 bg-[#0e141b] px-3 text-sm text-white outline-none focus:border-[#5288c1]"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-            />
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Selected Participants: {selectedUserIds.length}
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Участников: {selectedUserIds.length}
             </div>
             <button
-              type="button"
-              onClick={handleCreateGroup}
+              type="submit"
               disabled={!groupName.trim() || selectedUserIds.length === 0}
-              className="h-10 w-full rounded-xl bg-[#5288c1] text-sm font-semibold text-white hover:bg-[#6aa8ef] transition disabled:opacity-50"
+              className="auth-cta"
+              style={{ marginTop: 0, padding: '10px 14px', fontSize: 13 }}
             >
-              Create Group
+              <span>Создать группу</span>
             </button>
-          </div>
+          </form>
         )}
 
-        {isProfileMenuOpen && !isEditingProfile ? (
-          <div className="mb-4 rounded-2xl border border-white/10 bg-[#121b28] p-3 shadow-xl shadow-black/20">
-            <div className="mb-3 px-3 text-xs text-slate-400">{user.email}</div>
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditingProfile(true);
-                setIsProfileMenuOpen(false);
-              }}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-200 transition hover:bg-white/5"
-            >
-              <UserIcon size={16} />
-              Edit Profile
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium text-red-200 transition hover:bg-red-500/10"
-            >
-              <LogOut size={16} />
-              Logout
-            </button>
-          </div>
-        ) : null}
-
-        <form onSubmit={handleSearch} className="relative">
-          <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        {/* Search */}
+        <form onSubmit={handleSearch} className="sb-search">
+          <i><Search size={16} strokeWidth={1.6} /></i>
           <input
             type="text"
-            placeholder={isCreatingGroup ? "Search participants" : "Search users"}
-            className="h-11 w-full rounded-2xl border border-white/10 bg-[#0e141b] pl-10 pr-12 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#5b9be7] focus:ring-4 focus:ring-[#5b9be7]/10"
+            placeholder={isCreatingGroup ? 'поиск участников…' : 'искать людей и группы…'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search users"
           />
-          <button
-            type="submit"
-            className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-[#5288c1] text-white transition hover:bg-[#6aa8ef]"
-            aria-label="Search"
-          >
-            <Search size={15} />
-          </button>
+          <kbd>⌘K</kbd>
         </form>
 
-        {searchError ? <div className="mt-2 text-xs text-red-300">{searchError}</div> : null}
-        {searchResults.length > 0 ? (
-          <div className="absolute z-20 mt-2 max-h-64 w-[calc(100%-2.5rem)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121b28] p-2 shadow-2xl shadow-black/40">
+        {searchError ? (
+          <div style={{ padding: '0 14px 10px', fontSize: 12, color: '#ff9090' }}>{searchError}</div>
+        ) : null}
+
+        {/* Search results dropdown */}
+        {searchResults.length > 0 && (
+          <div
+            style={{
+              margin: '0 14px 14px',
+              background: 'var(--panel)',
+              border: '1px solid var(--rule)',
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}
+          >
             {searchResults.map((result) => {
               const isSelected = selectedUserIds.includes(result.id);
               return (
                 <button
                   key={result.id}
                   type="button"
-                  className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${
-                    isSelected ? 'bg-[#5288c1]/20' : 'hover:bg-white/5'
-                  }`}
-                  onClick={() => isCreatingGroup ? toggleUserSelection(result.id) : void handleStartChat(result.id)}
+                  className="row"
+                  style={{ borderRadius: 0 }}
+                  onClick={() =>
+                    isCreatingGroup ? toggleUserSelection(result.id) : void handleStartChat(result.id)
+                  }
                 >
                   <Avatar user={result} size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-white">{result.displayName}</span>
-                    <span className="block truncate text-xs text-slate-400">@{result.username}</span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                    <span className="row-name" style={{ fontSize: 14 }}>
+                      {result.displayName}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--ink-3)', fontFamily: '"JetBrains Mono", monospace' }}>
+                      @{result.username}
+                    </span>
                   </span>
-                  {isCreatingGroup && (
-                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center transition ${
-                      isSelected ? 'bg-[#5288c1] border-[#5288c1]' : 'border-white/20'
-                    }`}>
-                      {isSelected && <CheckCheck size={12} className="text-white" />}
-                    </div>
+                  {isCreatingGroup && isSelected && (
+                    <CheckCheck size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                   )}
                 </button>
               );
             })}
           </div>
-        ) : null}
-      </div>
+        )}
 
-      <ChatTabs
-        activeFilter={activeFilter}
-        setActiveFilter={setActiveFilter}
-        getChatFolder={getChatFolder}
-        isChatUnread={isChatUnread}
-      />
+        {/* Tabs */}
+        <ChatTabs
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+          getChatFolder={getChatFolder}
+          isChatUnread={isChatUnread}
+        />
 
-      <ChatList
-        filteredChats={filteredChats}
-        isChatUnread={isChatUnread}
-        getChatFolder={getChatFolder}
-        activeFilter={activeFilter}
-        handleSelectChat={handleSelectChat}
-      />
-    </aside>
+        {/* Chat list */}
+        <ChatList
+          filteredChats={filteredChats}
+          isChatUnread={isChatUnread}
+          getChatFolder={getChatFolder}
+          activeFilter={activeFilter}
+          handleSelectChat={handleSelectChat}
+        />
+
+        {/* Footer */}
+        <div className="sb-foot">
+          <div className="sb-foot-status">
+            <span className="odot on" style={{ width: 8, height: 8 }} />
+            <span className="mono">online · {user.email || 'you@chat0pisun.app'}</span>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };

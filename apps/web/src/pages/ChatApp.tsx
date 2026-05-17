@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore, useChatStore } from '../store/useStore';
 import { Sidebar } from '../components/Sidebar/Sidebar';
 import { ChatWindow } from '../components/Chat/ChatWindow';
@@ -12,6 +12,10 @@ export default function ChatApp() {
   const fetchChats = useChatStore((state) => state.fetchChats);
   const fetchMessages = useChatStore((state) => state.fetchMessages);
   const markAsRead = useChatStore((state) => state.markAsRead);
+  const setActiveChatId = useChatStore((state) => state.setActiveChatId);
+
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState<'list' | 'chat'>('list');
 
   const socket = useSocket(accessToken);
   useSocketSync(socket, activeChatId);
@@ -30,16 +34,36 @@ export default function ChatApp() {
     void fetchMessages(activeChatId);
     void markAsRead(activeChatId);
     socket?.emit('chat:join', { chatId: activeChatId });
+    // Go to chat pane on mobile when a chat is selected
+    setMobilePane('chat');
   }, [activeChatId, fetchMessages, markAsRead, socket]);
 
   if (!user) {
     return null;
   }
 
+  const appClass = [
+    'app',
+    detailsOpen && activeChatId ? 'with-details' : '',
+    `mobile-${mobilePane}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className="nextgram-bg flex h-screen overflow-hidden text-slate-100">
-      <Sidebar />
-      <ChatWindow />
+    <div className={appClass}>
+      <Sidebar
+        onSelectChat={() => setMobilePane('chat')}
+        onBack={() => {
+          setActiveChatId(null);
+          setMobilePane('list');
+        }}
+      />
+      <ChatWindow
+        detailsOpen={detailsOpen}
+        setDetailsOpen={setDetailsOpen}
+        onBack={() => setMobilePane('list')}
+      />
     </div>
   );
 }

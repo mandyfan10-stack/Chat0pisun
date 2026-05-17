@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, TextInput, StyleSheet, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { Typography } from '../../../shared/components/Typography';
 import type { LoginScreenProps } from '../../../navigation/types';
-import { theme } from '../../../shared/theme';
+import { colors, spacing, borderRadius } from '../../../shared/theme';
 
 export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passFocused, setPassFocused] = useState(false);
   const login = useAuthStore((state) => state.login);
   const isSubmitting = useAuthStore((state) => state.isSubmitting);
   const error = useAuthStore((state) => state.error);
@@ -23,40 +24,53 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   return (
     <View style={styles.container}>
+      {/* Logo mark */}
       <View style={styles.brandMark}>
-        <MaterialCommunityIcons name="message-text" size={30} color={theme.colors.white} />
+        <Text style={styles.brandGlyph}>◐</Text>
       </View>
+
       <Typography variant="h1" style={styles.brand}>
-        NEXTGRAM
+        CHAT0PISUN
       </Typography>
-      <Typography color="textSecondary" align="center" style={styles.subtitle}>
-        Secure local messenger with persistent chats.
+      <Typography style={styles.subtitle}>
+        писать — это существовать вместе
       </Typography>
 
       <View style={styles.panel}>
         <Typography variant="h2" style={styles.title}>
-          Sign in
+          Вход
         </Typography>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={theme.colors.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          accessibilityLabel="Email"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor={theme.colors.textMuted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          accessibilityLabel="Password"
-        />
+        <View style={[styles.fieldWrap, emailFocused && styles.fieldFocused]}>
+          <Text style={styles.fieldLabel}>ЭЛЕКТРОННАЯ ПОЧТА</Text>
+          <TextInput
+            style={styles.fieldInput}
+            placeholder="you@chat0pisun.app"
+            placeholderTextColor={colors.ink3}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
+            accessibilityLabel="Email"
+          />
+        </View>
+
+        <View style={[styles.fieldWrap, passFocused && styles.fieldFocused]}>
+          <Text style={styles.fieldLabel}>ПАРОЛЬ</Text>
+          <TextInput
+            style={styles.fieldInput}
+            placeholder="••••••••••"
+            placeholderTextColor={colors.ink3}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            onFocus={() => setPassFocused(true)}
+            onBlur={() => setPassFocused(false)}
+            accessibilityLabel="Password"
+          />
+        </View>
 
         {error ? (
           <View style={styles.errorBox}>
@@ -65,30 +79,28 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
         ) : null}
 
         <TouchableOpacity
-          style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
+          style={[styles.ctaButton, isSubmitting && styles.ctaDisabled]}
           onPress={handleLogin}
           disabled={isSubmitting}
           accessibilityRole="button"
           accessibilityLabel="Login"
         >
           {isSubmitting ? (
-            <ActivityIndicator color={theme.colors.white} />
+            <ActivityIndicator color={colors.canvas} />
           ) : (
-            <Typography color="white" style={styles.buttonText}>
-              Sign in
-            </Typography>
+            <Text style={styles.ctaText}>войти в эфир →</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.secondaryButton}
+          style={styles.switchLink}
           onPress={() => navigation.navigate('Register')}
           accessibilityRole="button"
           accessibilityLabel="Register instead"
         >
-          <Typography color="primaryLight" style={styles.secondaryText}>
-            Create account
-          </Typography>
+          <Text style={styles.switchText}>
+            Нет аккаунта? <Text style={styles.switchAccent}>Создать</Text>
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -99,78 +111,124 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
+    padding: spacing.lg,
+    backgroundColor: colors.canvas,
   },
   brandMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: spacing.md,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  brandGlyph: {
+    fontSize: 28,
+    color: colors.canvas,
+    lineHeight: 32,
   },
   brand: {
     textAlign: 'center',
-    letterSpacing: 2,
-    color: theme.colors.text,
+    letterSpacing: 3,
+    color: colors.ink,
+    fontFamily: 'monospace',
   },
   subtitle: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
-    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xl,
+    color: colors.ink3,
+    fontStyle: 'italic',
+    fontSize: 15,
   },
   panel: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
+    backgroundColor: colors.panel,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
   },
   title: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: spacing.lg,
+    color: colors.ink,
+    fontFamily: 'serif',
   },
-  input: {
-    minHeight: 52,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.input,
-    color: theme.colors.text,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+  fieldWrap: {
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    paddingTop: 10,
+    paddingBottom: 12,
+    marginBottom: spacing.md,
+    backgroundColor: colors.panel,
+  },
+  fieldFocused: {
+    borderColor: colors.accent,
+    backgroundColor: colors.panel2,
+  },
+  fieldLabel: {
+    fontSize: 10,
+    letterSpacing: 2,
+    color: colors.ink3,
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  fieldInput: {
+    color: colors.ink,
+    fontSize: 18,
+    fontFamily: 'serif',
+    padding: 0,
   },
   errorBox: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.error,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-    backgroundColor: 'rgba(248,113,113,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,122,89,0.3)',
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    backgroundColor: 'rgba(255,122,89,0.08)',
   },
-  primaryButton: {
-    minHeight: 52,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.primary,
+  ctaButton: {
+    minHeight: 56,
+    borderRadius: 14,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: theme.spacing.xs,
+    marginTop: spacing.xs,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 6,
   },
-  disabledButton: {
+  ctaDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
-    fontWeight: '700',
+  ctaText: {
+    color: colors.canvas,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
-  secondaryButton: {
-    minHeight: 48,
+  switchLink: {
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: theme.spacing.sm,
+    marginTop: spacing.sm,
   },
-  secondaryText: {
-    fontWeight: '700',
+  switchText: {
+    color: colors.ink3,
+    fontSize: 13,
+  },
+  switchAccent: {
+    color: colors.accent,
+    fontWeight: '600',
   },
 });

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
 import { useChatStore } from '../../store/useStore';
 import { ChatHeader } from './ChatHeader';
 import { MessageList } from './MessageList';
@@ -16,7 +15,13 @@ const readJsonStorage = <T,>(key: string, fallback: T): T => {
   }
 };
 
-export const ChatWindow = () => {
+interface ChatWindowProps {
+  detailsOpen: boolean;
+  setDetailsOpen: (open: boolean) => void;
+  onBack?: () => void;
+}
+
+export const ChatWindow = ({ detailsOpen, setDetailsOpen, onBack }: ChatWindowProps) => {
   const chats = useChatStore((state) => state.chats);
   const activeChatId = useChatStore((state) => state.activeChatId);
   const chatError = useChatStore((state) => state.chatError);
@@ -24,7 +29,6 @@ export const ChatWindow = () => {
   const [chatFolders, setChatFolders] = useState<Record<string, ChatFolder>>(() =>
     readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {}),
   );
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const activeChat = chats.find((chat) => chat.id === activeChatId) ?? null;
 
@@ -32,17 +36,18 @@ export const ChatWindow = () => {
     const handleStorageChange = () => {
       setChatFolders(readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {}));
     };
-
     window.addEventListener('storage', handleStorageChange);
     const interval = setInterval(handleStorageChange, 1000);
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
   }, []);
 
-    const getChatFolder = useCallback((chat: { id: string }) => chatFolders[chat.id] ?? 'personal', [chatFolders]);
+  const getChatFolder = useCallback(
+    (chat: { id: string }) => chatFolders[chat.id] ?? 'personal',
+    [chatFolders],
+  );
 
   const handleSetChatFolder = (chatId: string, folder: ChatFolder) => {
     const current = readJsonStorage<Record<string, ChatFolder>>('nextgram.chatFolders', {});
@@ -52,45 +57,48 @@ export const ChatWindow = () => {
   };
 
   return (
-    <main className={`${activeChat ? 'flex' : 'hidden lg:flex'} relative min-w-0 flex-1 flex-col bg-[#0b121a]`}>
+    <section className="chat">
       {activeChat ? (
         <>
-          <ChatHeader 
-            isDetailsOpen={isDetailsOpen} 
-            onToggleDetails={() => setIsDetailsOpen((curr) => !curr)} 
+          <ChatHeader
+            isDetailsOpen={detailsOpen}
+            onToggleDetails={() => setDetailsOpen(!detailsOpen)}
+            onBack={onBack}
           />
-          
+
           <MessageList />
 
           {chatError ? (
-            <div className="border-t border-red-400/20 bg-red-500/10 px-5 py-2 text-sm text-red-200">{chatError}</div>
+            <div
+              style={{
+                borderTop: '1px solid rgba(255,68,68,0.2)',
+                background: 'rgba(255,68,68,0.08)',
+                padding: '8px 20px',
+                fontSize: 13,
+                color: '#ff9090',
+              }}
+            >
+              {chatError}
+            </div>
           ) : null}
 
           <MessageInput />
 
-          {isDetailsOpen && (
-            <ChatDetails 
-              onClose={() => setIsDetailsOpen(false)}
+          {detailsOpen && (
+            <ChatDetails
+              onClose={() => setDetailsOpen(false)}
               onSetFolder={handleSetChatFolder}
               getChatFolder={getChatFolder}
             />
           )}
         </>
       ) : (
-        <div className="flex flex-1">
-          <div className="grid flex-1 place-items-center p-8 text-center">
-            <div>
-              <div className="mx-auto mb-6 grid h-24 w-24 place-items-center rounded-full bg-[#5288c1]/20 text-[#7dd3fc]">
-                <MessageCircle size={44} />
-              </div>
-              <h2 className="text-2xl font-semibold text-white">Welcome to Nextgram</h2>
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-400">
-                Select a chat or find a user to begin a private conversation.
-              </p>
-            </div>
-          </div>
+        <div className="empty">
+          <div className="empty-mark">◐</div>
+          <div className="empty-h">Выберите эфир слева</div>
+          <div className="empty-sub">или начните новый ⌘N</div>
         </div>
       )}
-    </main>
+    </section>
   );
 };

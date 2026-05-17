@@ -1,12 +1,12 @@
 import React, { useEffect, useCallback } from 'react';
-import { View, FlatList, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, FlatList, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useChatStore } from '../store/useChatStore';
 import { MessageBubble } from '../components/MessageBubble';
 import { ChatInput } from '../components/ChatInput';
 import { Typography } from '../../../shared/components/Typography';
-import { theme } from '../../../shared/theme';
+import { colors, spacing } from '../../../shared/theme';
 import type { ChatRoomScreenProps } from '../../../navigation/types';
 import type { Message } from '../types';
 
@@ -41,17 +41,25 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
   useEffect(() => {
     if (chat) {
       const otherParticipant =
-        chat.participants.find((participant) => participant.userId !== currentUser?.id)?.user ||
+        chat.participants.find(participant => participant.userId !== currentUser?.id)?.user ||
         chat.participants[0]?.user;
-      navigation.setOptions({ title: otherParticipant?.displayName || 'Chat' });
+      navigation.setOptions({
+        title: chat.type === 'GROUP' ? chat.name : (otherParticipant?.displayName || 'Chat'),
+      });
     }
   }, [chat, currentUser?.id, navigation]);
 
-  const handleSend = useCallback((text: string) => {
-    void sendMessage(chatId, text);
-  }, [chatId, sendMessage]);
+  const handleSend = useCallback(
+    (text: string) => {
+      void sendMessage(chatId, text);
+    },
+    [chatId, sendMessage],
+  );
 
-  const renderItem = useCallback(({ item }: { item: Message }) => <MessageBubble message={item} />, []);
+  const renderItem = useCallback(
+    ({ item }: { item: Message }) => <MessageBubble message={item} />,
+    [],
+  );
 
   return (
     <KeyboardAvoidingView
@@ -61,16 +69,13 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
     >
       {isLoadingMessages ? (
         <View style={styles.center}>
-          <ActivityIndicator color={theme.colors.primary} />
+          <ActivityIndicator color={colors.accent} />
         </View>
       ) : chatMessages.length === 0 ? (
         <View style={styles.center}>
-          <View style={styles.emptyCard}>
-            <Typography variant="h3" align="center">Start the conversation</Typography>
-            <Typography color="textSecondary" align="center" style={styles.emptyText}>
-              Messages are persisted through the backend.
-            </Typography>
-          </View>
+          <Text style={styles.emptyGlyph}>◐</Text>
+          <Text style={styles.emptyTitle}>Начните разговор</Text>
+          <Text style={styles.emptySub}>сообщения сохраняются в базе данных</Text>
         </View>
       ) : (
         <FlatList
@@ -83,7 +88,11 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
           initialNumToRender={20}
           maxToRenderPerBatch={10}
           windowSize={5}
-          ListFooterComponent={<Typography color="textMuted" align="center" style={styles.dateChip}>Today</Typography>}
+          ListFooterComponent={
+            <View style={styles.daySep}>
+              <Text style={styles.daySepText}>сегодня</Text>
+            </View>
+          }
         />
       )}
       {error ? (
@@ -92,7 +101,12 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
         </View>
       ) : null}
       <ChatInput onSend={handleSend} />
-      <View style={{ height: Platform.OS === 'ios' ? insets.bottom : 0, backgroundColor: theme.colors.backgroundSecondary }} />
+      <View
+        style={{
+          height: Platform.OS === 'ios' ? insets.bottom : 0,
+          backgroundColor: colors.panel,
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -100,42 +114,58 @@ export const ChatRoomScreen = ({ route, navigation }: ChatRoomScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.canvas,
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
+    padding: spacing.lg,
+  },
+  emptyGlyph: {
+    fontSize: 48,
+    color: colors.accent,
+    opacity: 0.6,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontFamily: 'serif',
+    fontSize: 22,
+    fontStyle: 'italic',
+    color: colors.ink2,
+    marginBottom: 8,
+  },
+  emptySub: {
+    fontSize: 11,
+    color: colors.ink3,
+    fontFamily: 'monospace',
+    letterSpacing: 0.5,
   },
   listContent: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: spacing.md,
   },
   error: {
-    padding: theme.spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.error,
-    backgroundColor: 'rgba(248,113,113,0.08)',
+    padding: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,122,89,0.3)',
+    backgroundColor: 'rgba(255,122,89,0.08)',
   },
-  emptyCard: {
-    width: '100%',
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+  daySep: {
+    alignItems: 'center',
+    marginVertical: spacing.lg,
   },
-  emptyText: {
-    marginTop: theme.spacing.sm,
-    lineHeight: 21,
-  },
-  dateChip: {
-    alignSelf: 'center',
+  daySepText: {
+    fontSize: 10,
+    color: colors.ink3,
+    fontFamily: 'monospace',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: theme.borderRadius.full,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    marginVertical: theme.spacing.sm,
   },
 });

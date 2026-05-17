@@ -47,7 +47,7 @@ services:
       REDIS_URL: redis://redis:6379
       # JWT_SECRET must be set explicitly — no insecure default.
       # Generate with: openssl rand -base64 32
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET env variable is required. Generate with: openssl rand -base64 32}
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET is required — run: openssl rand -base64 32}"
       PORT: 4000
       NODE_ENV: production
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}

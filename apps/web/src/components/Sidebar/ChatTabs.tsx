@@ -24,7 +24,6 @@ export const ChatTabs = ({ activeFilter, setActiveFilter, getChatFolder, isChatU
                 if (filter === 'new') {
                   return isChatUnread(chat);
                 }
-
                 return getChatFolder(chat) === filter;
               }).length,
       })),
@@ -32,19 +31,17 @@ export const ChatTabs = ({ activeFilter, setActiveFilter, getChatFolder, isChatU
   );
 
   return (
-    <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3 text-xs">
+    <div className="sb-tabs">
       {tabs.map(({ filter, label, count }) => (
         <button
           key={filter}
           type="button"
           onClick={() => setActiveFilter(filter)}
-          className={`rounded-full px-3 py-1.5 transition ${
-            activeFilter === filter ? 'bg-[#5288c1] text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
-          }`}
+          className={activeFilter === filter ? 'on' : ''}
           aria-pressed={activeFilter === filter}
         >
           {label}
-          {count > 0 ? <span className="ml-1 opacity-75">{count}</span> : null}
+          {count > 0 ? <span style={{ opacity: 0.7, marginLeft: 4 }}>{count}</span> : null}
         </button>
       ))}
     </div>

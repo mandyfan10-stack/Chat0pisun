@@ -1,8 +1,22 @@
 import React, { useMemo } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
-import { theme } from '../theme';
-import { Typography } from './Typography';
+import { View, Image, Text, StyleSheet } from 'react-native';
+import { colors } from '../theme';
 import { API_URL } from '../../config/env';
+
+const AVATAR_TINTS: [string, string][] = [
+  ['#ff7a59', '#2a1410'],
+  ['#c5ff2e', '#1a1f0a'],
+  ['#7cc7ff', '#0e1a25'],
+  ['#ffb84d', '#241608'],
+  ['#e08aff', '#1d0e25'],
+  ['#5cffb4', '#0a2018'],
+];
+
+function tintFor(s: string): [string, string] {
+  let h = 0;
+  for (const c of s) h = ((h * 31 + c.charCodeAt(0)) | 0);
+  return AVATAR_TINTS[Math.abs(h) % AVATAR_TINTS.length];
+}
 
 interface AvatarProps {
   uri?: string;
@@ -23,17 +37,18 @@ export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 
   }, [safeName]);
 
   const sourceUri = useMemo(() => {
-    if (!uri) {
-      return null;
-    }
+    if (!uri) return null;
     return uri.startsWith('http') ? uri : `${API_URL}${uri}`;
   }, [uri]);
+
+  const [bg, fg] = tintFor(safeName);
+  const radius = size * 0.28;
 
   if (sourceUri) {
     return (
       <Image
         source={{ uri: sourceUri }}
-        style={[styles.container, { width: size, height: size, borderRadius: size / 2 }]}
+        style={{ width: size, height: size, borderRadius: radius }}
       />
     );
   }
@@ -41,27 +56,38 @@ export const Avatar: React.FC<AvatarProps> = React.memo(({ uri, name, size = 48 
   return (
     <View
       style={[
-        styles.container,
         styles.placeholder,
-        { width: size, height: size, borderRadius: size / 2 },
+        {
+          width: size,
+          height: size,
+          borderRadius: radius,
+          backgroundColor: bg,
+        },
       ]}
     >
-      <Typography variant="h3" color="white">
+      <Text
+        style={[
+          styles.initials,
+          {
+            color: fg,
+            fontSize: size * 0.36,
+          },
+        ]}
+      >
         {initials}
-      </Typography>
+      </Text>
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border,
-  },
   placeholder: {
-    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  initials: {
+    fontFamily: 'serif',
+    fontWeight: '400',
+    letterSpacing: -0.5,
   },
 });
