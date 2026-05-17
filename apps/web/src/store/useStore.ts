@@ -77,6 +77,11 @@ interface ChatState {
   upsertChat: (chat: Chat) => void;
   addMessage: (message: Message, tempId?: string) => void;
   markMessagesAsRead: (chatId: string, userId: string, readAt: string) => void;
+  mutedChats: string[];
+  pinnedChats: string[];
+  toggleMute: (chatId: string) => void;
+  togglePin: (chatId: string) => void;
+  removeChat: (chatId: string) => void;
   resetChats: () => void;
 }
 
@@ -266,6 +271,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingChats: false,
   isLoadingMessages: false,
   chatError: null,
+  mutedChats: JSON.parse(localStorage.getItem('c0p.mutedChats') ?? '[]') as string[],
+  pinnedChats: JSON.parse(localStorage.getItem('c0p.pinnedChats') ?? '[]') as string[],
 
   setActiveChatId: (id) => set({ activeChatId: id }),
 
@@ -379,6 +386,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   resetChats: () => set({ chats: [], activeChatId: null, messages: {}, chatError: null }),
 }));
+
+  toggleMute: (chatId) =>
+    set((state) => {
+      const current = state.mutedChats;
+      const next = current.includes(chatId) ? current.filter((id) => id !== chatId) : [...current, chatId];
+      localStorage.setItem('c0p.mutedChats', JSON.stringify(next));
+      return { mutedChats: next };
+    }),
+
+  togglePin: (chatId) =>
+    set((state) => {
+      const current = state.pinnedChats;
+      const next = current.includes(chatId) ? current.filter((id) => id !== chatId) : [...current, chatId];
+      localStorage.setItem('c0p.pinnedChats', JSON.stringify(next));
+      return { pinnedChats: next };
+    }),
+
+  removeChat: (chatId) =>
+    set((state) => ({
+      chats: state.chats.filter((c) => c.id !== chatId),
+      activeChatId: state.activeChatId === chatId ? null : state.activeChatId,
+    })),
 
 setAuthFailureHandler(() => {
   useAuthStore.getState().clearSession();

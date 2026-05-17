@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { Pin } from 'lucide-react';
 import { useAuthStore, useChatStore, type Chat } from '../../store/useStore';
 import { Avatar } from './Avatar';
 import { formatTime, getOtherParticipant } from './utils';
@@ -22,6 +24,17 @@ export const ChatList = ({
   const chats = useChatStore((state) => state.chats);
   const activeChatId = useChatStore((state) => state.activeChatId);
   const isLoadingChats = useChatStore((state) => state.isLoadingChats);
+  const pinnedChats = useChatStore((state) => state.pinnedChats);
+
+  const sorted = useMemo(
+    () =>
+      [...filteredChats].sort((a, b) => {
+        const ap = pinnedChats.includes(a.id) ? 1 : 0;
+        const bp = pinnedChats.includes(b.id) ? 1 : 0;
+        return bp - ap;
+      }),
+    [filteredChats, pinnedChats],
+  );
 
   if (!user) return null;
 
@@ -59,10 +72,11 @@ export const ChatList = ({
 
   return (
     <div className="sb-list">
-      {filteredChats.map((chat) => {
+      {sorted.map((chat) => {
         const otherParticipant = getOtherParticipant(chat, user.id);
         const isActive = activeChatId === chat.id;
         const isUnread = isChatUnread(chat);
+        const isPinned = pinnedChats.includes(chat.id);
         const isGroup = chat.type === 'GROUP';
         const displayName = isGroup
           ? chat.name
@@ -87,7 +101,15 @@ export const ChatList = ({
             <div className="row-body">
               <div className="row-top">
                 <span className="row-name">{displayName}</span>
-                <span className="row-time mono">{time}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {isPinned && (
+                    <Pin
+                      size={10}
+                      style={{ color: 'var(--accent)', flexShrink: 0, fill: 'currentColor' }}
+                    />
+                  )}
+                  <span className="row-time mono">{time}</span>
+                </div>
               </div>
               <div className="row-bot">
                 <span className="row-preview">

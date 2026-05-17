@@ -5,6 +5,8 @@ import { ChatWindow } from '../components/Chat/ChatWindow';
 import { useSocket } from '../hooks/useSocket';
 import { useSocketSync } from '../hooks/useSocketSync';
 
+type RailView = 'chats' | 'contacts' | 'groups' | 'calls' | 'settings';
+
 export default function ChatApp() {
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -16,6 +18,7 @@ export default function ChatApp() {
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState<'list' | 'chat'>('list');
+  const [railView, setRailView] = useState<RailView>('chats');
 
   const socket = useSocket(accessToken);
   useSocketSync(socket, activeChatId);
@@ -53,6 +56,8 @@ export default function ChatApp() {
   return (
     <div className={appClass}>
       <Sidebar
+        railView={railView}
+        onRailChange={setRailView}
         onSelectChat={() => setMobilePane('chat')}
         onBack={() => {
           setActiveChatId(null);

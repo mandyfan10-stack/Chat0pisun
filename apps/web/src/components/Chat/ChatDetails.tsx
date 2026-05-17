@@ -1,4 +1,5 @@
-import { X, Bell, Search, Pin, LogOut } from 'lucide-react';
+import { X, Bell, BellOff, Search, Pin, LogOut } from 'lucide-react';
+import { api } from '../../services/api';
 import { useAuthStore, useChatStore } from '../../store/useStore';
 import { Avatar } from '../Sidebar/Avatar';
 import { getOtherParticipant } from '../Sidebar/utils';
@@ -7,12 +8,18 @@ interface ChatDetailsProps {
   onClose: () => void;
   onSetFolder: (chatId: string, folder: 'personal' | 'work') => void;
   getChatFolder: (chat: { id: string }) => 'personal' | 'work';
+  onSearchInChat?: () => void;
 }
 
-export const ChatDetails = ({ onClose, onSetFolder, getChatFolder }: ChatDetailsProps) => {
+export const ChatDetails = ({ onClose, onSetFolder, getChatFolder, onSearchInChat }: ChatDetailsProps) => {
   const user = useAuthStore((state) => state.user);
   const chats = useChatStore((state) => state.chats);
   const activeChatId = useChatStore((state) => state.activeChatId);
+  const mutedChats = useChatStore((state) => state.mutedChats);
+  const pinnedChats = useChatStore((state) => state.pinnedChats);
+  const toggleMute = useChatStore((state) => state.toggleMute);
+  const togglePin = useChatStore((state) => state.togglePin);
+  const removeChat = useChatStore((state) => state.removeChat);
 
   const activeChat = chats.find((chat) => chat.id === activeChatId) ?? null;
   const activeParticipant = activeChat && user ? getOtherParticipant(activeChat, user.id) : undefined;
@@ -20,9 +27,19 @@ export const ChatDetails = ({ onClose, onSetFolder, getChatFolder }: ChatDetails
   if (!activeChat) return null;
 
   const isGroup = activeChat.type === 'GROUP';
+  const isMuted = mutedChats.includes(activeChat.id);
+  const isPinned = pinnedChats.includes(activeChat.id);
   const displayName = isGroup
     ? activeChat.name
     : activeParticipant?.user.displayName ?? 'Chat';
+
+  const handleLeave = () => {
+    if (confirm('Покинуть группу?')) {
+      void api.delete(`/chats/${activeChat.id}/leave`).catch(() => {});
+      removeChat(activeChat.id);
+      onClose();
+    }
+  };
 
   return (
     <aside className="details">
@@ -46,22 +63,29 @@ export const ChatDetails = ({ onClose, onSetFolder, getChatFolder }: ChatDetails
           {isGroup ? `${activeChat.participants.length} участников` : 'в сети недавно'}
         </div>
         <div className="det-acts">
-          <button>
-            <i><Bell size={16} strokeWidth={1.6} /></i>
-            <span>тише</span>
+          <button onClick={() => toggleMute(activeChat.id)}>
+            <i>
+              {isMuted
+                ? <BellOff size={16} strokeWidth={1.6} />
+                : <Bell size={16} strokeWidth={1.6} />
+              }
+            </i>
+            <span>{isMuted ? 'звук' : 'тише'}</span>
           </button>
-          <button>
+          <button onClick={onSearchInChat}>
             <i><Search size={16} strokeWidth={1.6} /></i>
             <span>искать</span>
           </button>
-          <button>
-            <i><Pin size={16} strokeWidth={1.6} /></i>
-            <span>закрепить</span>
+          <button onClick={() => togglePin(activeChat.id)}>
+            <i><Pin size={16} strokeWidth={1.6} style={isPinned ? { fill: 'currentColor' } : {}} /></i>
+            <span>{isPinned ? 'закреплён' : 'закрепить'}</span>
           </button>
-          <button className="danger">
-            <i><LogOut size={16} strokeWidth={1.6} /></i>
-            <span>покинуть</span>
-          </button>
+          {isGroup && (
+            <button className="danger" onClick={handleLeave}>
+              <i><LogOut size={16} strokeWidth={1.6} /></i>
+              <span>покинуть</span>
+            </button>
+          )}
         </div>
       </div>
 
