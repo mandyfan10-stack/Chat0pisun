@@ -385,7 +385,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }),
 
   resetChats: () => set({ chats: [], activeChatId: null, messages: {}, chatError: null }),
-}));
 
   toggleMute: (chatId) =>
     set((state) => {
@@ -408,6 +407,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       chats: state.chats.filter((c) => c.id !== chatId),
       activeChatId: state.activeChatId === chatId ? null : state.activeChatId,
     })),
+}));
 
 setAuthFailureHandler(() => {
   useAuthStore.getState().clearSession();
