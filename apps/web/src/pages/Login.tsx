@@ -83,7 +83,6 @@ export default function Login() {
 
         <div className="auth-foot">
           <span className="mono">v 0.1.0 · build 14052</span>
-          <span className="mono" title="точка обмена сервера">астана · 51°10′N 71°26′E</span>
         </div>
       </aside>
 
