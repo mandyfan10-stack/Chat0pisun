@@ -65,9 +65,9 @@ describe('ChatApp Component', () => {
       </MemoryRouter>,
     );
 
-    expect(getByText('Welcome to Nextgram')).toBeDefined();
+    expect(getByText('Выберите эфир слева')).toBeDefined();
     expect(
-      getByText('Select a chat or find a user to begin a private conversation.'),
+      getByText('или начните новый ⌘N'),
     ).toBeDefined();
   });
 });
