@@ -194,8 +194,9 @@ export const emitMessageCreated = (chatId: string, message: MessageDto, tempId?:
 };
 
 export const emitChatUpdated = (participantUserIds: string[], chat: ChatDto) => {
-  for (const userId of participantUserIds) {
-    io?.to(`user:${userId}`).emit('chat:updated', chat);
+  if (participantUserIds.length > 0) {
+    const rooms = participantUserIds.map((userId) => `user:${userId}`);
+    io?.to(rooms).emit('chat:updated', chat);
   }
 };
 
